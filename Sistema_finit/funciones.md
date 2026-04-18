@@ -1,0 +1,32 @@
+# Funciones y Lógica de Negocio - finit
+
+Este documento detalla las funciones principales del sistema, agrupadas por su responsabilidad.
+
+## Capa de Aplicación (Casos de Uso)
+
+### Registro de Colaborador (`CasoUsoRegistroColaborador`)
+- **`ejecutar`**:
+  - **Parámetros**: `nombre`, `correo`, `telefono`, `sitio_web`, `servicios` (Lista de servicios con sus precios por urgencia).
+  - **Lógica**: Crea o recupera un `Usuario`, lo registra como `Colaborador` y guarda todos los servicios asociados con sus respectivos precios personalizados.
+
+### Solicitud de Servicio (`CasoUsoSolicitudServicio`)
+- **`emparejar_y_solicitar`**:
+  - **Parámetros**: `usuario_id`, `categoria_id`, `urgencia`, `latitud`, `longitud`.
+  - **Lógica**: 
+    1. Busca servicios cercanos mediante SQL (`buscar_por_categoria_y_cercania`).
+    2. Itera sobre los candidatos y calcula la distancia física usando `calcular_distancia_km`.
+    3. Recupera el precio base según la `urgencia` solicitada.
+    4. Calcula el `precio_final = precio_urgencia + (distancia * precio_por_km)`.
+    5. Elige la opción más económica y crea la solicitud en estado `EnEsperaDePago`.
+- **`calcular_distancia_km`**: Implementa la fórmula de Haversine para determinar la distancia en kilómetros entre dos puntos geodésicos.
+
+## Capa de Dominio (Puertos)
+
+### Repositorio de Servicios (`RepositorioServicio`)
+- **`buscar_por_categoria_y_cercania`**: Filtra en base de datos aquellos servicios cuyo radio de cobertura (`distancia_maxima_kilometros`) incluya la posición del usuario.
+- **`buscar_precio_por_servicio_y_urgencia`**: Obtiene el costo base específico de un servicio para un nivel de urgencia dado.
+
+## Capa de Infraestructura (API)
+
+### Manejadores de Axum (`manejadores.rs`)
+- **`registrar_colaborador`**: Punto de entrada HTTP que deserializa el JSON de entrada y delega la ejecución al caso de uso correspondiente. Maneja la conversión de errores de negocio a respuestas HTTP.
