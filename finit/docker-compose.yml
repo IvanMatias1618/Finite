@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: finit
+      MYSQL_ROOT_PASSWORD: password_segura
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./infraestructura/esquema.sql:/docker-entrypoint-initdb.d/esquema.sql
+
+volumes:
+  db_data:
