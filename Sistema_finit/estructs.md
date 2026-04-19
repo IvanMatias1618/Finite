@@ -29,7 +29,7 @@ Este documento describe la organización de archivos, carpetas y estructuras del
     - `mysql_repositorio_*.rs`: Implementaciones concretas para producción.
     - `sqlite_repositorio.rs`: Implementación de respaldo para pruebas locales rápidas sin base de datos externa.
     - `api/`: Exposición del sistema mediante protocolo HTTP.
-      - `rutas.rs`: Definición de endpoints.
+      - `rutas.rs`: Definición de endpoints y estructura `EstadoApp` para inyección de dependencias.
       - `manejadores.rs`: Lógica de entrada/salida para las peticiones HTTP (Axum).
 - `tests/`: Pruebas de integración y validación del sistema.
   - `pruebas_temporales.rs`: Suite de pruebas inicial utilizando tablas temporales de MySQL.

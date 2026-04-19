@@ -4,10 +4,15 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
 
 ## Capa de Aplicación (Casos de Uso)
 
+### Registro de Usuario (`CasoUsoRegistroUsuario`)
+- **`ejecutar`**:
+  - **Parámetros**: `nombre`, `correo`, `contrasenna`.
+  - **Lógica**: Valida unicidad del correo y persiste el nuevo usuario.
+
 ### Registro de Colaborador (`CasoUsoRegistroColaborador`)
 - **`ejecutar`**:
-  - **Parámetros**: `nombre`, `correo`, `telefono`, `sitio_web`, `servicios` (Lista de servicios con sus precios por urgencia).
-  - **Lógica**: Crea o recupera un `Usuario`, lo registra como `Colaborador` y guarda todos los servicios asociados con sus respectivos precios personalizados.
+  - **Parámetros**: `token_usuario`, `telefono`, `sitio_web`, `servicios`.
+  - **Lógica**: Valida al usuario y crea el perfil de colaborador con sus servicios asociados.
 
 ### Solicitud de Servicio (`CasoUsoSolicitudServicio`)
 - **`emparejar_y_solicitar`**:

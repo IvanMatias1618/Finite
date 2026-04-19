@@ -39,15 +39,15 @@ impl RepositorioSQLite {
 #[async_trait]
 impl RepositorioUsuario for RepositorioSQLite {
     async fn guardar(&self, usuario: Usuario) -> Result<Usuario, Box<dyn Error + Send + Sync>> {
-        let resultado = sqlx::query("INSERT INTO usuario (nombre, correo) VALUES (?, ?)")
-            .bind(&usuario.nombre).bind(&usuario.correo).execute(&self.pool).await?;
+        let resultado = sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna) VALUES (?, ?, ?)")
+            .bind(&usuario.nombre).bind(&usuario.correo).bind(&usuario.contrasenna).execute(&self.pool).await?;
         Ok(Usuario { id: Some(resultado.last_insert_rowid() as i32), ..usuario })
     }
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Usuario>, Box<dyn Error + Send + Sync>> {
-        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo FROM usuario WHERE id = ?").bind(id).fetch_optional(&self.pool).await?)
+        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna FROM usuario WHERE id = ?").bind(id).fetch_optional(&self.pool).await?)
     }
     async fn buscar_por_correo(&self, correo: &str) -> Result<Option<Usuario>, Box<dyn Error + Send + Sync>> {
-        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo FROM usuario WHERE correo = ?").bind(correo).fetch_optional(&self.pool).await?)
+        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna FROM usuario WHERE correo = ?").bind(correo).fetch_optional(&self.pool).await?)
     }
 }
 

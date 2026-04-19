@@ -4,25 +4,37 @@ Este documento es para que el desarrollador del Frontend pueda consumir los serv
 
 ## Base URL
 Por defecto local: `http://localhost:3000`
-
 ## Endpoints Principales
 
 ### 1. Estado de la API (Health Check)
 **GET** `/`
 - **Uso**: Verificar si el servidor está en línea.
-- **Respuesta Esperada**: `200 OK` con un mensaje de bienvenida.
+- **Respuesta Esperada**: `200 OK`.
 
-### 2. Registro de Colaborador Completo
-**POST** `/colaboradores`
-- **Uso**: Crea un usuario (si no existe), su perfil de colaborador y una lista de servicios.
+### 2. Registro de Usuario
+**POST** `/usuarios`
+- **Uso**: Crear una cuenta base.
 - **Cuerpo (JSON)**:
   ```json
   {
-    "nombre": "Nombre Apellido",
-    "correo": "correo@ejemplo.com",
+    "nombre": "Ivan",
+    "correo": "ivan@ejemplo.com",
+    "contrasenna": "mi_password"
+  }
+  ```
+- **Respuesta**: El ID del usuario.
+
+### 3. Registro de Colaborador Completo
+**POST** `/colaboradores`
+- **Uso**: Convierte un usuario existente en colaborador.
+- **Cuerpo (JSON)**:
+  ```json
+  {
+    "token_usuario": "1",
     "telefono": "123456789",
     "sitio_web": "https://mi-sitio.com",
     "servicios": [
+...
       [
         {
           "colaborador_id": 0,

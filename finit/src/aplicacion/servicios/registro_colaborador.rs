@@ -1,4 +1,3 @@
-use crate::dominio::usuario::Usuario;
 use crate::dominio::colaborador::Colaborador;
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
@@ -28,25 +27,18 @@ impl CasoUsoRegistroColaborador {
 
     pub async fn ejecutar(
         &self,
-        nombre: String,
-        correo: String,
+        token_usuario: String,
         telefono: String,
         sitio_web: Option<String>,
         servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
     ) -> Result<i32, Box<dyn Error + Send + Sync>> {
-        // Buscar o crear usuario
-        let usuario = match self.repositorio_usuario.buscar_por_correo(&correo).await? {
-            Some(u) => u,
-            None => {
-                self.repositorio_usuario
-                    .guardar(Usuario {
-                        id: None,
-                        nombre,
-                        correo,
-                    })
-                    .await?
-            }
-        };
+        // En el futuro el token será validado. Por ahora lo tratamos como el ID de usuario.
+        let usuario_id = token_usuario.parse::<i32>()
+            .map_err(|_| "Token de usuario inválido (debe ser el ID numérico por ahora)")?;
+
+        // Validar que el usuario existe
+        let usuario = self.repositorio_usuario.buscar_por_id(usuario_id).await?
+            .ok_or("Usuario no encontrado")?;
 
         // Crear colaborador
         let colaborador = self.repositorio_colaborador.guardar(Colaborador {
