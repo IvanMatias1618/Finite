@@ -3,6 +3,8 @@ use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use crate::dominio::puertos::repositorio_servicio::RepositorioServicio;
+use crate::dominio::token::Claims;
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use std::error::Error;
 use std::sync::Arc;
 
@@ -32,9 +34,14 @@ impl CasoUsoRegistroColaborador {
         sitio_web: Option<String>,
         servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
     ) -> Result<i32, Box<dyn Error + Send + Sync>> {
-        // En el futuro el token será validado. Por ahora lo tratamos como el ID de usuario.
-        let usuario_id = token_usuario.parse::<i32>()
-            .map_err(|_| "Token de usuario inválido (debe ser el ID numérico por ahora)")?;
+        // Decodificar el token JWT
+        let token_data = decode::<Claims>(
+            &token_usuario,
+            &DecodingKey::from_secret("secreto_finit".as_ref()),
+            &Validation::default(),
+        ).map_err(|_| "Token de usuario invalido o expirado")?;
+
+        let usuario_id = token_data.claims.sub.parse::<i32>()?;
 
         // Validar que el usuario existe
         let usuario = self.repositorio_usuario.buscar_por_id(usuario_id).await?

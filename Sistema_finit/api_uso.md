@@ -12,26 +12,34 @@ Por defecto local: `http://localhost:3000`
 - **Respuesta Esperada**: `200 OK`.
 
 ### 2. Registro de Usuario
-**POST** `/usuarios`
-- **Uso**: Crear una cuenta base.
-- **Cuerpo (JSON)**:
-  ```json
-  {
-    "nombre": "Ivan",
-    "correo": "ivan@ejemplo.com",
-    "contrasenna": "mi_password"
-  }
-  ```
+... (resto de contenido anterior)
 - **Respuesta**: El ID del usuario.
 
-### 3. Registro de Colaborador Completo
+### 2.5 Listar Categorías
+**GET** `/categorias`
+- **Uso**: Obtener todas las categorías de servicios disponibles en el sistema.
+- **Respuesta (JSON)**:
+  ```json
+  [
+    { "id": 1, "nombre": "Limpieza" },
+    { "id": 2, "nombre": "Mecánica" }
+  ]
+  ```
+
+### 3. Inicio de Sesion
+**POST** `/login`
+- **Uso**: Validar credenciales y obtener token.
+- **Respuesta**: Token JWT (ej: `"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`).
+
+### 4. Registro de Colaborador Completo
 **POST** `/colaboradores`
-- **Uso**: Convierte un usuario existente en colaborador.
+- **Uso**: Convierte un usuario existente en colaborador. Requiere el JWT obtenido en el login.
 - **Cuerpo (JSON)**:
   ```json
   {
-    "token_usuario": "1",
+    "token_usuario": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "telefono": "123456789",
+...
     "sitio_web": "https://mi-sitio.com",
     "servicios": [
 ...

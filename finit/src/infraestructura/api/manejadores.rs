@@ -44,6 +44,53 @@ pub async fn registrar_usuario(
     }
 }
 
+use crate::dominio::categoria::Categoria;
+
+#[axum::debug_handler]
+pub async fn listar_categorias(
+    State(estado): State<Arc<EstadoApp>>,
+) -> Result<Json<Vec<Categoria>>, AppError> {
+    match estado.listar_categorias.ejecutar().await {
+        Ok(categorias) => Ok(Json(categorias)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DatosLogin {
+    pub correo: String,
+    pub contrasenna: String,
+}
+
+#[axum::debug_handler]
+pub async fn login_usuario(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosLogin>,
+) -> Result<Json<String>, AppError> {
+    match estado.login_usuario
+        .ejecutar(datos.correo, datos.contrasenna)
+        .await
+    {
+        Ok(token) => Ok(Json(token)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+use crate::dominio::colaborador::PerfilColaborador;
+use axum::extract::Path;
+
+#[axum::debug_handler]
+pub async fn consultar_perfil_colaborador(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+) -> Result<Json<PerfilColaborador>, AppError> {
+    match estado.consultar_perfil_colaborador.ejecutar(id).await {
+        Ok(Some(perfil)) => Ok(Json(perfil)),
+        Ok(None) => Err(AppError("Colaborador no encontrado".into())),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct DatosRegistro {
     pub token_usuario: String,

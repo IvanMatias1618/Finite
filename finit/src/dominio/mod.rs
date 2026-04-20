@@ -6,3 +6,4 @@ pub mod resennia;
 pub mod categoria;
 pub mod urgencia;
 pub mod puertos;
+pub mod token;

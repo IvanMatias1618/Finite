@@ -3,13 +3,15 @@ use crate::dominio::colaborador::Colaborador;
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use crate::dominio::urgencia::Urgencia;
+use crate::dominio::categoria::Categoria;
+use crate::dominio::puertos::repositorio_categoria::RepositorioCategoria;
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use crate::dominio::puertos::repositorio_servicio::RepositorioServicio;
 use crate::dominio::puertos::repositorio_solicitud::RepositorioSolicitud;
 use std::error::Error;
 use async_trait::async_trait;
-use sqlx::{SqlitePool, Row, Sqlite};
+use sqlx::{SqlitePool, Row};
 use rust_decimal::Decimal;
 
 pub struct RepositorioSQLite {
@@ -22,9 +24,11 @@ impl RepositorioSQLite {
     }
 
     pub async fn inicializar_tablas(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, correo TEXT UNIQUE)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, correo TEXT UNIQUE, contrasenna TEXT)")
             .execute(&self.pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, telefono TEXT, sitio_web TEXT)")
+            .execute(&self.pool).await?;
+        sqlx::query("CREATE TABLE IF NOT EXISTS categoria (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT UNIQUE)")
             .execute(&self.pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS servicio (id INTEGER PRIMARY KEY AUTOINCREMENT, colaborador_id INTEGER, categoria_id INTEGER, descripcion TEXT, distancia_maxima_kilometros TEXT, precio_por_kilometro TEXT, latitud TEXT, longitud TEXT)")
             .execute(&self.pool).await?;
@@ -33,6 +37,15 @@ impl RepositorioSQLite {
         sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, servicio_id INTEGER, urgencia TEXT, precio_final TEXT, estado TEXT, latitud_usuario TEXT, longitud_usuario TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
             .execute(&self.pool).await?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl RepositorioCategoria for RepositorioSQLite {
+    async fn listar(&self) -> Result<Vec<Categoria>, Box<dyn Error + Send + Sync>> {
+        let categorias = sqlx::query_as::<_, Categoria>("SELECT id, nombre FROM categoria")
+            .fetch_all(&self.pool).await?;
+        Ok(categorias)
     }
 }
 
@@ -89,6 +102,16 @@ impl RepositorioServicio for RepositorioSQLite {
                 longitud: r.get::<String, _>(7).parse().unwrap_or(Decimal::ZERO),
             }))
         } else { Ok(None) }
+    }
+    async fn buscar_por_colaborador(&self, colaborador_id: i32) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
+        let rows = sqlx::query("SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?").bind(colaborador_id).fetch_all(&self.pool).await?;
+        Ok(rows.into_iter().map(|r| Servicio {
+            id: Some(r.get(0)), colaborador_id: r.get(1), categoria_id: r.get(2), descripcion: r.get(3),
+            distancia_maxima_kilometros: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
+            precio_por_kilometro: r.get::<String, _>(5).parse().unwrap_or(Decimal::ZERO),
+            latitud: r.get::<String, _>(6).parse().unwrap_or(Decimal::ZERO),
+            longitud: r.get::<String, _>(7).parse().unwrap_or(Decimal::ZERO),
+        }).collect())
     }
     async fn buscar_por_categoria_y_cercania(&self, _categoria_id: i32, _latitud: f64, _longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
         // Para pruebas locales en SQLite, traemos todos (simulado)

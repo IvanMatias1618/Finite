@@ -23,13 +23,15 @@ impl CasoUsoRegistroUsuario {
             return Err("El correo ya se encuentra registrado".into());
         }
 
-        // Guardar el usuario
-        // NOTA: Aqui deberiamos hashear la contrasenna en el futuro cercano
+        // Hashear la contrasenna antes de guardar
+        let hash = bcrypt::hash(contrasenna, bcrypt::DEFAULT_COST)
+            .map_err(|_| "Error al cifrar la contrasenna")?;
+
         let usuario = Usuario {
             id: None,
             nombre,
             correo,
-            contrasenna,
+            contrasenna: hash,
         };
 
         let usuario_guardado = self.repositorio_usuario.guardar(usuario).await?;

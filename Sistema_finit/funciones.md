@@ -14,6 +14,11 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
   - **Parámetros**: `token_usuario`, `telefono`, `sitio_web`, `servicios`.
   - **Lógica**: Valida al usuario y crea el perfil de colaborador con sus servicios asociados.
 
+### Consultar Perfil de Colaborador (`CasoUsoConsultarPerfilColaborador`)
+- **`ejecutar`**:
+  - **Parámetros**: `colaborador_id`.
+  - **Lógica**: Obtiene los datos del colaborador, el nombre del usuario asociado y la lista completa de sus servicios.
+
 ### Solicitud de Servicio (`CasoUsoSolicitudServicio`)
 - **`emparejar_y_solicitar`**:
   - **Parámetros**: `usuario_id`, `categoria_id`, `urgencia`, `latitud`, `longitud`.
@@ -29,6 +34,7 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
 
 ### Repositorio de Servicios (`RepositorioServicio`)
 - **`buscar_por_categoria_y_cercania`**: Filtra en base de datos aquellos servicios cuyo radio de cobertura (`distancia_maxima_kilometros`) incluya la posición del usuario.
+- **`buscar_por_colaborador`**: Obtiene todos los servicios registrados para un colaborador específico.
 - **`buscar_precio_por_servicio_y_urgencia`**: Obtiene el costo base específico de un servicio para un nivel de urgencia dado.
 
 ## Capa de Infraestructura (API)

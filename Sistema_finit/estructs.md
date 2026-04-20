@@ -10,7 +10,7 @@ Este documento describe la organización de archivos, carpetas y estructuras del
   - `main.rs`: Punto de entrada de la aplicación. Configura la base de datos y el servidor web.
   - `dominio/`: El núcleo del negocio. No tiene dependencias externas.
     - `usuario.rs`: Estructura `Usuario`. Representa tanto a clientes como a colaboradores.
-    - `colaborador.rs`: Estructura `Colaborador`. Datos adicionales para quienes ofrecen servicios.
+    - `colaborador.rs`: Estructuras `Colaborador` y `PerfilColaborador`. Datos profesionales y perfil completo.
     - `categoria.rs`: Estructura `Categoria`. Clasificación de los servicios.
     - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece, su ubicación (latitud/longitud) y cobertura.
     - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida de una petición.
@@ -23,6 +23,7 @@ Este documento describe la organización de archivos, carpetas y estructuras del
   - `aplicacion/`: Orquestación del negocio. Implementa los "Casos de Uso".
     - `servicios/`: Lógica de procesos complejos.
       - `registro_colaborador.rs`: Lógica para convertir un usuario en colaborador con sus servicios.
+      - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil público de un colaborador con sus servicios.
       - `solicitud_servicio.rs`: El motor de búsqueda, emparejamiento (matching) y cálculo de precios.
   - `infraestructura/`: Implementación de detalles técnicos y dependencias externas.
     - `mod.rs`: Definición de la estructura `RepositorioMySQL`.

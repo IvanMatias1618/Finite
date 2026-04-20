@@ -55,6 +55,17 @@ impl RepositorioServicio for RepositorioMySQL {
         Ok(registro)
     }
 
+    async fn buscar_por_colaborador(&self, colaborador_id: i32) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
+        let registros = sqlx::query_as::<MySql, Servicio>(
+            "SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?"
+        )
+        .bind(colaborador_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(registros)
+    }
+
     async fn buscar_por_categoria_y_cercania(&self, categoria_id: i32, latitud: f64, longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, Servicio>(
             "SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud 
