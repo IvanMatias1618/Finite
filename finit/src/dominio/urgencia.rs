@@ -19,4 +19,14 @@ impl Urgencia {
             Urgencia::Critica => "critica".to_string(),
         }
     }
+
+    pub fn desde_cadena(cadena: &str) -> Option<Self> {
+        match cadena.to_lowercase().as_str() {
+            "baja" => Some(Self::Baja),
+            "media" => Some(Self::Media),
+            "alta" => Some(Self::Alta),
+            "critica" => Some(Self::Critica),
+            _ => None,
+        }
+    }
 }

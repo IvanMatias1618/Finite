@@ -14,6 +14,19 @@ pub enum EstadoSolicitud {
     EnEsperaDePago,
 }
 
+impl EstadoSolicitud {
+    pub fn desde_cadena(cadena: &str) -> Option<Self> {
+        match cadena.to_lowercase().as_str() {
+            "pendiente" => Some(Self::Pendiente),
+            "aceptado" => Some(Self::Aceptado),
+            "terminado" => Some(Self::Terminado),
+            "cancelado" => Some(Self::Cancelado),
+            "en_espera_de_pago" => Some(Self::EnEsperaDePago),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SolicitudServicio {
     pub id: Option<i32>,

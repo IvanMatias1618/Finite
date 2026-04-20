@@ -10,16 +10,22 @@ async fn test_consultar_perfil_colaborador() {
     let repositorio = Arc::new(RepositorioSQLite::nuevo(pool.clone()));
     repositorio.inicializar_tablas().await.unwrap();
 
-    // 1. Insertar Usuario
+    // 1. Insertar Categoria y Subcategoria
+    sqlx::query("INSERT INTO categoria (id, nombre) VALUES (1, 'Hogar')")
+        .execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO subcategoria (id, categoria_id, nombre) VALUES (1, 1, 'Fontaneria')")
+        .execute(&pool).await.unwrap();
+
+    // 2. Insertar Usuario
     sqlx::query("INSERT INTO usuario (id, nombre, correo, contrasenna) VALUES (1, 'Ivan', 'ivan@test.com', 'password')")
         .execute(&pool).await.unwrap();
 
-    // 2. Insertar Colaborador
+    // 3. Insertar Colaborador
     sqlx::query("INSERT INTO colaborador (id, usuario_id, telefono, sitio_web) VALUES (1, 1, '123456789', 'http://test.com')")
         .execute(&pool).await.unwrap();
 
-    // 3. Insertar Servicios
-    sqlx::query("INSERT INTO servicio (id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (1, 1, 1, 'Servicio de prueba', '10.0', '5.5', '19.4326', '-99.1332')")
+    // 4. Insertar Servicios
+    sqlx::query("INSERT INTO servicio (id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (1, 1, 1, 'Servicio de prueba', '10.0', '5.5', '19.4326', '-99.1332')")
         .execute(&pool).await.unwrap();
 
     let caso_uso = CasoUsoConsultarPerfilColaborador::nuevo(

@@ -11,8 +11,8 @@ Este documento describe la organización de archivos, carpetas y estructuras del
   - `dominio/`: El núcleo del negocio. No tiene dependencias externas.
     - `usuario.rs`: Estructura `Usuario`. Representa tanto a clientes como a colaboradores.
     - `colaborador.rs`: Estructuras `Colaborador` y `PerfilColaborador`. Datos profesionales y perfil completo.
-    - `categoria.rs`: Estructura `Categoria`. Clasificación de los servicios.
-    - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece, su ubicación (latitud/longitud) y cobertura.
+    - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`. Clasificación jerárquica de los servicios.
+    - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece (vinculado a una `subcategoria_id`), su ubicación (latitud/longitud) y cobertura.
     - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida de una petición.
     - `urgencia.rs`: ENUM `Urgencia`. Define los niveles de prioridad del servicio.
     - `puertos/`: **Interfaces (Traits)**. Definen qué puede hacer el sistema sin decir cómo.
@@ -24,7 +24,7 @@ Este documento describe la organización de archivos, carpetas y estructuras del
     - `servicios/`: Lógica de procesos complejos.
       - `registro_colaborador.rs`: Lógica para convertir un usuario en colaborador con sus servicios.
       - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil público de un colaborador con sus servicios.
-      - `solicitud_servicio.rs`: El motor de búsqueda, emparejamiento (matching) y cálculo de precios.
+      - `solicitud_servicio.rs`: El motor de búsqueda, emparejamiento (matching) y cálculo de precios basado en subcategorias y geolocalización.
   - `infraestructura/`: Implementación de detalles técnicos y dependencias externas.
     - `mod.rs`: Definición de la estructura `RepositorioMySQL`.
     - `mysql_repositorio_*.rs`: Implementaciones concretas para producción.
@@ -33,12 +33,13 @@ Este documento describe la organización de archivos, carpetas y estructuras del
       - `rutas.rs`: Definición de endpoints y estructura `EstadoApp` para inyección de dependencias.
       - `manejadores.rs`: Lógica de entrada/salida para las peticiones HTTP (Axum).
 - `tests/`: Pruebas de integración y validación del sistema.
-  - `pruebas_temporales.rs`: Suite de pruebas inicial utilizando tablas temporales de MySQL.
+  - `colaborador_test.rs`: Suite de pruebas para el perfil del colaborador.
+  - `navegacion_test.rs`: Suite de pruebas para categorias y subcategorias.
 
 ## Estructuras y Parámetros Clave
 
 ### Entidades de Dominio
-- **Servicio**: Incluye `latitud`, `longitud` y `distancia_maxima_kilometros`. Se decidió colocar las coordenadas en el servicio para permitir que un mismo colaborador ofrezca servicios en puntos geográficos distintos (ej. dos locales comerciales).
+- **Servicio**: Incluye `latitud`, `longitud`, `subcategoria_id` y `distancia_maxima_kilometros`. Se decidió colocar las coordenadas en el servicio para permitir que un mismo colaborador ofrezca servicios en puntos geográficos distintos (ej. dos locales comerciales).
 - **SolicitudServicio**: Incluye `precio_final` calculado en tiempo de emparejamiento.
 
 ### Justificación de Diseño

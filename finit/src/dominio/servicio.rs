@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 pub struct Servicio {
     pub id: Option<i32>,
     pub colaborador_id: i32,
-    pub categoria_id: i32,
+    pub subcategoria_id: i32,
     pub descripcion: String,
     pub distancia_maxima_kilometros: Decimal,
     pub precio_por_kilometro: Decimal,

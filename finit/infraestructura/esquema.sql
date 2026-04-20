@@ -18,17 +18,25 @@ CREATE TABLE IF NOT EXISTS categoria (
     nombre VARCHAR(100) NOT NULL UNIQUE
 );
 
+CREATE TABLE IF NOT EXISTS subcategoria (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    categoria_id INT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    FOREIGN KEY (categoria_id) REFERENCES categoria(id)
+);
+
 CREATE TABLE IF NOT EXISTS servicio (
     id INT AUTO_INCREMENT PRIMARY KEY,
     colaborador_id INT NOT NULL,
-    categoria_id INT NOT NULL,
+    subcategoria_id INT NOT NULL,
     descripcion TEXT,
     distancia_maxima_kilometros DECIMAL(10,2),
     precio_por_kilometro DECIMAL(10,2),
     latitud DECIMAL(10,8),
     longitud DECIMAL(11,8),
     FOREIGN KEY (colaborador_id) REFERENCES colaborador(id),
-    FOREIGN KEY (categoria_id) REFERENCES categoria(id)
+    FOREIGN KEY (subcategoria_id) REFERENCES subcategoria(id)
 );
 
 CREATE TABLE IF NOT EXISTS precio_servicio_urgencia (

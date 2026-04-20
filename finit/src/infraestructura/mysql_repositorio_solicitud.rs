@@ -48,6 +48,27 @@ impl RepositorioSolicitud for RepositorioMySQL {
         Ok(registro)
     }
 
+    async fn listar_por_usuario(&self, usuario_id: i32) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let registros = sqlx::query_as::<MySql, SolicitudServicio>(
+            "SELECT id, usuario_id, servicio_id, urgencia, precio_final, estado, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ?"
+        )
+        .bind(usuario_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(registros)
+    }
+
+    async fn listar_todas(&self) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let registros = sqlx::query_as::<MySql, SolicitudServicio>(
+            "SELECT id, usuario_id, servicio_id, urgencia, precio_final, estado, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(registros)
+    }
+
     async fn actualizar_estado(&self, id: i32, estado: EstadoSolicitud) -> Result<(), Box<dyn Error + Send + Sync>> {
         let estado_cadena = match estado {
             EstadoSolicitud::Pendiente => "pendiente",

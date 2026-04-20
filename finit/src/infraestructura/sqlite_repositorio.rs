@@ -3,7 +3,7 @@ use crate::dominio::colaborador::Colaborador;
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use crate::dominio::urgencia::Urgencia;
-use crate::dominio::categoria::Categoria;
+use crate::dominio::categoria::{Categoria, Subcategoria};
 use crate::dominio::puertos::repositorio_categoria::RepositorioCategoria;
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
@@ -30,7 +30,9 @@ impl RepositorioSQLite {
             .execute(&self.pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS categoria (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT UNIQUE)")
             .execute(&self.pool).await?;
-        sqlx::query("CREATE TABLE IF NOT EXISTS servicio (id INTEGER PRIMARY KEY AUTOINCREMENT, colaborador_id INTEGER, categoria_id INTEGER, descripcion TEXT, distancia_maxima_kilometros TEXT, precio_por_kilometro TEXT, latitud TEXT, longitud TEXT)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS subcategoria (id INTEGER PRIMARY KEY AUTOINCREMENT, categoria_id INTEGER, nombre TEXT, descripcion TEXT, FOREIGN KEY (categoria_id) REFERENCES categoria(id))")
+            .execute(&self.pool).await?;
+        sqlx::query("CREATE TABLE IF NOT EXISTS servicio (id INTEGER PRIMARY KEY AUTOINCREMENT, colaborador_id INTEGER, subcategoria_id INTEGER, descripcion TEXT, distancia_maxima_kilometros TEXT, precio_por_kilometro TEXT, latitud TEXT, longitud TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id), FOREIGN KEY (subcategoria_id) REFERENCES subcategoria(id))")
             .execute(&self.pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS precio_servicio_urgencia (id INTEGER PRIMARY KEY AUTOINCREMENT, servicio_id INTEGER, urgencia TEXT, precio TEXT)")
             .execute(&self.pool).await?;
@@ -46,6 +48,12 @@ impl RepositorioCategoria for RepositorioSQLite {
         let categorias = sqlx::query_as::<_, Categoria>("SELECT id, nombre FROM categoria")
             .fetch_all(&self.pool).await?;
         Ok(categorias)
+    }
+    async fn listar_subcategorias(&self, categoria_id: i32) -> Result<Vec<Subcategoria>, Box<dyn Error + Send + Sync>> {
+        let subcategorias = sqlx::query_as::<_, Subcategoria>("SELECT id, categoria_id, nombre, descripcion FROM subcategoria WHERE categoria_id = ?")
+            .bind(categoria_id)
+            .fetch_all(&self.pool).await?;
+        Ok(subcategorias)
     }
 }
 
@@ -79,8 +87,8 @@ impl RepositorioColaborador for RepositorioSQLite {
 #[async_trait]
 impl RepositorioServicio for RepositorioSQLite {
     async fn guardar(&self, servicio: Servicio) -> Result<Servicio, Box<dyn Error + Send + Sync>> {
-        let resultado = sqlx::query("INSERT INTO servicio (colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (?, ?, ?, ?, ?, ?, ?)")
-            .bind(servicio.colaborador_id).bind(servicio.categoria_id).bind(&servicio.descripcion)
+        let resultado = sqlx::query("INSERT INTO servicio (colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(servicio.colaborador_id).bind(servicio.subcategoria_id).bind(&servicio.descripcion)
             .bind(servicio.distancia_maxima_kilometros.to_string()).bind(servicio.precio_por_kilometro.to_string())
             .bind(servicio.latitud.to_string()).bind(servicio.longitud.to_string()).execute(&self.pool).await?;
         Ok(Servicio { id: Some(resultado.last_insert_rowid() as i32), ..servicio })
@@ -92,10 +100,10 @@ impl RepositorioServicio for RepositorioSQLite {
     }
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Servicio>, Box<dyn Error + Send + Sync>> {
         // Mapeo manual simple para SQLite por tipos Decimal
-        let row = sqlx::query("SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE id = ?").bind(id).fetch_optional(&self.pool).await?;
+        let row = sqlx::query("SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE id = ?").bind(id).fetch_optional(&self.pool).await?;
         if let Some(r) = row {
             Ok(Some(Servicio {
-                id: Some(r.get(0)), colaborador_id: r.get(1), categoria_id: r.get(2), descripcion: r.get(3),
+                id: Some(r.get(0)), colaborador_id: r.get(1), subcategoria_id: r.get(2), descripcion: r.get(3),
                 distancia_maxima_kilometros: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
                 precio_por_kilometro: r.get::<String, _>(5).parse().unwrap_or(Decimal::ZERO),
                 latitud: r.get::<String, _>(6).parse().unwrap_or(Decimal::ZERO),
@@ -104,20 +112,20 @@ impl RepositorioServicio for RepositorioSQLite {
         } else { Ok(None) }
     }
     async fn buscar_por_colaborador(&self, colaborador_id: i32) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
-        let rows = sqlx::query("SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?").bind(colaborador_id).fetch_all(&self.pool).await?;
+        let rows = sqlx::query("SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?").bind(colaborador_id).fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| Servicio {
-            id: Some(r.get(0)), colaborador_id: r.get(1), categoria_id: r.get(2), descripcion: r.get(3),
+            id: Some(r.get(0)), colaborador_id: r.get(1), subcategoria_id: r.get(2), descripcion: r.get(3),
             distancia_maxima_kilometros: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
             precio_por_kilometro: r.get::<String, _>(5).parse().unwrap_or(Decimal::ZERO),
             latitud: r.get::<String, _>(6).parse().unwrap_or(Decimal::ZERO),
             longitud: r.get::<String, _>(7).parse().unwrap_or(Decimal::ZERO),
         }).collect())
     }
-    async fn buscar_por_categoria_y_cercania(&self, _categoria_id: i32, _latitud: f64, _longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
-        // Para pruebas locales en SQLite, traemos todos (simulado)
-        let rows = sqlx::query("SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio").fetch_all(&self.pool).await?;
+    async fn buscar_por_categoria_y_cercania(&self, subcategoria_id: i32, _latitud: f64, _longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
+        // Para pruebas locales en SQLite, traemos todos los de la subcategoria (simulado)
+        let rows = sqlx::query("SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE subcategoria_id = ?").bind(subcategoria_id).fetch_all(&self.pool).await?;
         Ok(rows.into_iter().map(|r| Servicio {
-            id: Some(r.get(0)), colaborador_id: r.get(1), categoria_id: r.get(2), descripcion: r.get(3),
+            id: Some(r.get(0)), colaborador_id: r.get(1), subcategoria_id: r.get(2), descripcion: r.get(3),
             distancia_maxima_kilometros: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
             precio_por_kilometro: r.get::<String, _>(5).parse().unwrap_or(Decimal::ZERO),
             latitud: r.get::<String, _>(6).parse().unwrap_or(Decimal::ZERO),
@@ -141,5 +149,52 @@ impl RepositorioSolicitud for RepositorioSQLite {
         Ok(SolicitudServicio { id: Some(resultado.last_insert_rowid() as i32), ..solicitud })
     }
     async fn buscar_por_id(&self, _id: i32) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> { Ok(None) }
+    
+    async fn listar_por_usuario(&self, usuario_id: i32) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let rows = sqlx::query("SELECT id, usuario_id, servicio_id, urgencia, precio_final, estado, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ?")
+            .bind(usuario_id).fetch_all(&self.pool).await?;
+        
+        let mut solicitudes = Vec::new();
+        for r in rows {
+            solicitudes.push(self.mapear_solicitud(r)?);
+        }
+        Ok(solicitudes)
+    }
+
+    async fn listar_todas(&self) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let rows = sqlx::query("SELECT id, usuario_id, servicio_id, urgencia, precio_final, estado, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio")
+            .fetch_all(&self.pool).await?;
+        
+        let mut solicitudes = Vec::new();
+        for r in rows {
+            solicitudes.push(self.mapear_solicitud(r)?);
+        }
+        Ok(solicitudes)
+    }
+
     async fn actualizar_estado(&self, _id: i32, _estado: EstadoSolicitud) -> Result<(), Box<dyn Error + Send + Sync>> { Ok(()) }
+}
+
+impl RepositorioSQLite {
+    fn mapear_solicitud(&self, r: sqlx::sqlite::SqliteRow) -> Result<SolicitudServicio, Box<dyn Error + Send + Sync>> {
+        use crate::dominio::urgencia::Urgencia;
+        use crate::dominio::solicitud::EstadoSolicitud;
+        use chrono::{DateTime, Utc};
+
+        let urgencia_str: String = r.get(3);
+        let estado_str: String = r.get(5);
+        let fecha_str: String = r.get(8);
+
+        Ok(SolicitudServicio {
+            id: Some(r.get(0)),
+            usuario_id: r.get(1),
+            servicio_id: r.get(2),
+            urgencia: Urgencia::desde_cadena(&urgencia_str).unwrap_or(Urgencia::Baja),
+            precio_final: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
+            estado: EstadoSolicitud::desde_cadena(&estado_str).unwrap_or(EstadoSolicitud::EnEsperaDePago),
+            latitud_usuario: r.get::<Option<String>, _>(6).and_then(|s| s.parse().ok()),
+            longitud_usuario: r.get::<Option<String>, _>(7).and_then(|s| s.parse().ok()),
+            fecha_creacion: Some(DateTime::parse_from_str(&format!("{} +0000", fecha_str), "%Y-%m-%d %H:%M:%S %z")?.with_timezone(&Utc)),
+        })
+    }
 }

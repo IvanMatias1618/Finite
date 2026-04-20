@@ -11,10 +11,10 @@ use sqlx::{Row, MySql};
 impl RepositorioServicio for RepositorioMySQL {
     async fn guardar(&self, servicio: Servicio) -> Result<Servicio, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO servicio (colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO servicio (colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(servicio.colaborador_id)
-        .bind(servicio.categoria_id)
+        .bind(servicio.subcategoria_id)
         .bind(&servicio.descripcion)
         .bind(servicio.distancia_maxima_kilometros)
         .bind(servicio.precio_por_kilometro)
@@ -46,7 +46,7 @@ impl RepositorioServicio for RepositorioMySQL {
 
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Servicio>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, Servicio>(
-            "SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE id = ?"
+            "SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -57,7 +57,7 @@ impl RepositorioServicio for RepositorioMySQL {
 
     async fn buscar_por_colaborador(&self, colaborador_id: i32) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, Servicio>(
-            "SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?"
+            "SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud FROM servicio WHERE colaborador_id = ?"
         )
         .bind(colaborador_id)
         .fetch_all(&self.pool)
@@ -66,14 +66,14 @@ impl RepositorioServicio for RepositorioMySQL {
         Ok(registros)
     }
 
-    async fn buscar_por_categoria_y_cercania(&self, categoria_id: i32, latitud: f64, longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
+    async fn buscar_por_categoria_y_cercania(&self, subcategoria_id: i32, latitud: f64, longitud: f64) -> Result<Vec<Servicio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, Servicio>(
-            "SELECT id, colaborador_id, categoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud 
+            "SELECT id, colaborador_id, subcategoria_id, descripcion, distancia_maxima_kilometros, precio_por_kilometro, latitud, longitud 
              FROM servicio 
-             WHERE categoria_id = ? 
+             WHERE subcategoria_id = ? 
              AND (ST_Distance_Sphere(point(longitud, latitud), point(?, ?)) / 1000) <= CAST(distancia_maxima_kilometros AS DOUBLE)"
         )
-        .bind(categoria_id)
+        .bind(subcategoria_id)
         .bind(longitud)
         .bind(latitud)
         .fetch_all(&self.pool)

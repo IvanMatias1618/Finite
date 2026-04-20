@@ -27,7 +27,7 @@ impl CasoUsoSolicitudServicio {
     pub async fn emparejar_y_solicitar(
         &self,
         usuario_id: i32,
-        categoria_id: i32,
+        subcategoria_id: i32,
         urgencia: Urgencia,
         latitud: Decimal,
         longitud: Decimal,
@@ -37,11 +37,11 @@ impl CasoUsoSolicitudServicio {
         let longitud_flotante = longitud.to_f64().ok_or("Longitud invalida")?;
 
         let servicios = self.repositorio_servicio
-            .buscar_por_categoria_y_cercania(categoria_id, latitud_flotante, longitud_flotante)
+            .buscar_por_categoria_y_cercania(subcategoria_id, latitud_flotante, longitud_flotante)
             .await?;
 
         if servicios.is_empty() {
-            return Err("No hay servicios disponibles para esta categoria en su zona".into());
+            return Err("No hay servicios disponibles para esta subcategoria en su zona".into());
         }
 
         // 2. Elegir el mejor (Matching) y calcular precio

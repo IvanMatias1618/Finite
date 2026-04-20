@@ -44,7 +44,7 @@ pub async fn registrar_usuario(
     }
 }
 
-use crate::dominio::categoria::Categoria;
+use crate::dominio::categoria::{Categoria, Subcategoria};
 
 #[axum::debug_handler]
 pub async fn listar_categorias(
@@ -52,6 +52,17 @@ pub async fn listar_categorias(
 ) -> Result<Json<Vec<Categoria>>, AppError> {
     match estado.listar_categorias.ejecutar().await {
         Ok(categorias) => Ok(Json(categorias)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[axum::debug_handler]
+pub async fn listar_subcategorias(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+) -> Result<Json<Vec<Subcategoria>>, AppError> {
+    match estado.listar_subcategorias.ejecutar(id).await {
+        Ok(subcategorias) => Ok(Json(subcategorias)),
         Err(e) => Err(AppError(e.to_string())),
     }
 }
@@ -87,6 +98,49 @@ pub async fn consultar_perfil_colaborador(
     match estado.consultar_perfil_colaborador.ejecutar(id).await {
         Ok(Some(perfil)) => Ok(Json(perfil)),
         Ok(None) => Err(AppError("Colaborador no encontrado".into())),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+use crate::dominio::solicitud::SolicitudServicio;
+use crate::dominio::urgencia::Urgencia;
+use rust_decimal::Decimal;
+
+#[derive(Deserialize)]
+pub struct DatosCrearSolicitud {
+    pub usuario_id: i32,
+    pub subcategoria_id: i32,
+    pub urgencia: Urgencia,
+    pub latitud: Decimal,
+    pub longitud: Decimal,
+}
+
+#[axum::debug_handler]
+pub async fn crear_solicitud(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosCrearSolicitud>,
+) -> Result<Json<SolicitudServicio>, AppError> {
+    match estado.solicitud_servicio
+        .emparejar_y_solicitar(datos.usuario_id, datos.subcategoria_id, datos.urgencia, datos.latitud, datos.longitud)
+        .await
+    {
+        Ok(solicitud) => Ok(Json(solicitud)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct FiltroSolicitudes {
+    pub usuario_id: Option<i32>,
+}
+
+#[axum::debug_handler]
+pub async fn listar_solicitudes(
+    State(estado): State<Arc<EstadoApp>>,
+    axum::extract::Query(filtro): axum::extract::Query<FiltroSolicitudes>,
+) -> Result<Json<Vec<SolicitudServicio>>, AppError> {
+    match estado.listar_solicitudes.ejecutar(filtro.usuario_id).await {
+        Ok(solicitudes) => Ok(Json(solicitudes)),
         Err(e) => Err(AppError(e.to_string())),
     }
 }

@@ -4,7 +4,10 @@ use finit::aplicacion::servicios::registro_colaborador::CasoUsoRegistroColaborad
 use finit::aplicacion::servicios::registro_usuario::CasoUsoRegistroUsuario;
 use finit::aplicacion::servicios::login_usuario::CasoUsoLoginUsuario;
 use finit::aplicacion::servicios::listar_categorias::CasoUsoListarCategorias;
+use finit::aplicacion::servicios::listar_subcategorias::CasoUsoListarSubcategorias;
 use finit::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultarPerfilColaborador;
+use finit::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
+use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
 use sqlx::SqlitePool;
 use tower_http::cors::CorsLayer;
@@ -39,9 +42,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let listar_subcategorias = Arc::new(CasoUsoListarSubcategorias::nuevo(
+        repositorio.clone(),
+    ));
+
     let consultar_perfil_colaborador = Arc::new(CasoUsoConsultarPerfilColaborador::nuevo(
         repositorio.clone(),
         repositorio.clone(),
+        repositorio.clone(),
+    ));
+
+    let solicitud_servicio = Arc::new(CasoUsoSolicitudServicio::nuevo(
+        repositorio.clone(),
+        repositorio.clone(),
+    ));
+
+    let listar_solicitudes = Arc::new(CasoUsoListarSolicitudes::nuevo(
         repositorio.clone(),
     ));
 
@@ -50,7 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         registro_usuario,
         login_usuario,
         listar_categorias,
+        listar_subcategorias,
         consultar_perfil_colaborador,
+        solicitud_servicio,
+        listar_solicitudes,
     });
 
     // Configurar Rutas
