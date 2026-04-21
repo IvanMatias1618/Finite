@@ -36,26 +36,34 @@ Por defecto local: `http://localhost:3000`
   ```
 - **Respuesta**: Token JWT (String).
 
-### 4. Listar Categorías y Subcategorías
+### 4. Listar Categorías (Lazy Load)
 **GET** `/categorias`
-- **Uso**: Obtener todas las categorías y sus subcategorías anidadas.
+- **Uso**: Obtener todas las categorías base (sin subcategorías).
 - **Respuesta (JSON)**:
   ```json
   [
     {
       "id": 1,
       "nombre": "Hogar",
-      "subcategorias": [
-        { "id": 1, "categoria_id": 1, "nombre": "Fontaneria", "descripcion": "Reparación de fugas" },
-        { "id": 2, "categoria_id": 1, "nombre": "Electricidad", "descripcion": "Instalaciones eléctricas" }
-      ]
+      "subcategorias": null
     }
   ]
   ```
 
-### 5. Consultar Perfil de Colaborador
+### 5. Listar Subcategorías por Categoría
+**GET** `/categorias/:id/subcategorias`
+- **Uso**: Obtener las subcategorías vinculadas a una categoría específica.
+- **Respuesta (JSON)**:
+  ```json
+  [
+    { "id": 1, "categoria_id": 1, "nombre": "Fontaneria", "descripcion": "Reparación de fugas" },
+    { "id": 2, "categoria_id": 1, "nombre": "Electricidad", "descripcion": "Instalaciones eléctricas" }
+  ]
+  ```
+
+### 6. Consultar Perfil de Colaborador (Perfil Pro)
 **GET** `/colaboradores/:id`
-- **Uso**: Obtener información pública de un colaborador y sus servicios.
+- **Uso**: Obtener información pública detallada, servicios y portafolio.
 - **Respuesta (JSON)**:
   ```json
   {
@@ -63,66 +71,64 @@ Por defecto local: `http://localhost:3000`
     "nombre": "Ivan",
     "telefono": "123456789",
     "sitio_web": "http://test.com",
-    "servicios": [
+    "foto_perfil": "url_foto.jpg",
+    "especialidad_resumen": "Experto en fugas complejas",
+    "es_verificado": true,
+    "medio_transporte": "Camioneta",
+    "rating_promedio": "4.8",
+    "total_servicios": 120,
+    "servicios": [...],
+    "portafolio": [
       {
         "id": 1,
         "colaborador_id": 1,
-        "subcategoria_id": 1,
-        "descripcion": "Servicio de fontanería",
-        "distancia_maxima_kilometros": "10.0",
-        "precio_por_kilometro": "5.5",
-        "latitud": "19.4326",
-        "longitud": "-99.1332"
+        "foto_antes": "antes.jpg",
+        "foto_despues": "despues.jpg",
+        "descripcion": "Cambio de tubería principal"
       }
     ]
   }
   ```
 
-### 6. Registro de Colaborador
-**POST** `/colaboradores`
-- **Uso**: Convierte un usuario en colaborador con sus servicios iniciales.
-- **Cuerpo (JSON)**:
+### 7. Marketplace de Colaboradores
+**GET** `/subcategorias/:id/colaboradores?latitud=19.4326&longitud=-99.1332`
+- **Uso**: Listar profesionales cercanos a una ubicación, ordenados por precio base.
+- **Respuesta (JSON)**:
   ```json
-  {
-    "token_usuario": "JWT_AQUÍ",
-    "telefono": "123456789",
-    "sitio_web": "http://test.com",
-    "servicios": [
-      [
-        {
-          "colaborador_id": 0,
-          "subcategoria_id": 1,
-          "descripcion": "Descripción del servicio",
-          "distancia_maxima_kilometros": 15.0,
-          "precio_por_kilometro": 5.5,
-          "latitud": 19.4326,
-          "longitud": -99.1332
-        },
-        [
-          { "servicio_id": 0, "urgencia": "baja", "precio": 100.0 },
-          { "servicio_id": 0, "urgencia": "alta", "precio": 250.0 }
-        ]
-      ]
-    ]
-  }
+  [
+    {
+      "colaborador_id": 1,
+      "nombre": "Ivan",
+      "descripcion_servicio": "Servicio de fontanería profesional",
+      "precio_base": "50.00",
+      "distancia_km": "1.5"
+    }
+  ]
   ```
 
-### 7. Crear Solicitud de Servicio (Matching)
+### 8. Registro de Colaborador
+**POST** `/colaboradores`
+- **Uso**: Convierte un usuario en colaborador con sus servicios iniciales.
+
+### 9. Crear Solicitud de Servicio (Con Evidencia)
 **POST** `/solicitudes`
-- **Uso**: Busca el colaborador más económico en una subcategoría cercana y crea la solicitud.
+- **Uso**: Crear una solicitud vinculada a un colaborador específico tras seleccionarlo en el Marketplace.
 - **Cuerpo (JSON)**:
   ```json
   {
     "usuario_id": 1,
+    "colaborador_id": 1,
     "subcategoria_id": 1,
-    "urgencia": "media",
+    "urgencia": "alta",
+    "descripcion_detallada": "Tubería rota en el baño principal, sale mucha agua.",
+    "fotos_evidencia_inicial": "foto1.jpg,foto2.jpg",
     "latitud": 19.4326,
     "longitud": -99.1332
   }
   ```
-- **Respuesta (JSON)**: La solicitud creada con el `precio_final` calculado.
+- **Respuesta (JSON)**: La solicitud creada con estado `pendiente_de_revision`.
 
-### 8. Listar Solicitudes
+### 10. Listar Solicitudes
 **GET** `/solicitudes`
 - **Uso**: Listar todas las solicitudes del sistema.
 - **Filtros (Query Params)**:
@@ -134,10 +140,14 @@ Por defecto local: `http://localhost:3000`
     {
       "id": 1,
       "usuario_id": 1,
+      "colaborador_id": 1,
+      "subcategoria_id": 1,
       "servicio_id": 1,
       "urgencia": "media",
       "precio_final": "150.50",
-      "estado": "en_espera_de_pago",
+      "estado": "pendiente_de_revision",
+      "descripcion_detallada": "...",
+      "fotos_evidencia_inicial": "...",
       "latitud_usuario": "19.4326",
       "longitud_usuario": "-99.1332",
       "fecha_creacion": "2023-10-27T10:00:00Z"

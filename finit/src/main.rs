@@ -8,6 +8,7 @@ use finit::aplicacion::servicios::listar_subcategorias::CasoUsoListarSubcategori
 use finit::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultarPerfilColaborador;
 use finit::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
+use finit::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
 use sqlx::SqlitePool;
 use tower_http::cors::CorsLayer;
@@ -61,6 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let listar_colaboradores_marketplace = Arc::new(CasoUsoListarColaboradoresMarketplace::nuevo(
+        repositorio.clone(),
+        repositorio.clone(),
+        repositorio.clone(),
+    ));
+
     let estado = Arc::new(EstadoApp {
         registro_colaborador,
         registro_usuario,
@@ -70,6 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         consultar_perfil_colaborador,
         solicitud_servicio,
         listar_solicitudes,
+        listar_colaboradores_marketplace,
     });
 
     // Configurar Rutas

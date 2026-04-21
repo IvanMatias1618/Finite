@@ -7,6 +7,7 @@ use crate::dominio::token::Claims;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use std::error::Error;
 use std::sync::Arc;
+use rust_decimal::Decimal;
 
 pub struct CasoUsoRegistroColaborador {
     repositorio_usuario: Arc<dyn RepositorioUsuario>,
@@ -53,6 +54,12 @@ impl CasoUsoRegistroColaborador {
             usuario_id: usuario.id.unwrap(),
             telefono,
             sitio_web,
+            foto_perfil: None,
+            especialidad_resumen: None,
+            es_verificado: false,
+            medio_transporte: None,
+            rating_promedio: Decimal::ZERO,
+            total_servicios: 0,
         }).await?;
 
         // Registrar servicios y sus precios

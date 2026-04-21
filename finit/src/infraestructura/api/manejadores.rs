@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{State, Path},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -67,6 +67,26 @@ pub async fn listar_subcategorias(
     }
 }
 
+use crate::aplicacion::servicios::listar_colaboradores_marketplace::ColaboradorMarketplace;
+
+#[derive(Deserialize)]
+pub struct QueryMarketplace {
+    pub latitud: Decimal,
+    pub longitud: Decimal,
+}
+
+#[axum::debug_handler]
+pub async fn listar_colaboradores_marketplace(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    axum::extract::Query(query): axum::extract::Query<QueryMarketplace>,
+) -> Result<Json<Vec<ColaboradorMarketplace>>, AppError> {
+    match estado.listar_colaboradores_marketplace.ejecutar(id, query.latitud, query.longitud).await {
+        Ok(colaboradores) => Ok(Json(colaboradores)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct DatosLogin {
     pub correo: String,
@@ -88,7 +108,6 @@ pub async fn login_usuario(
 }
 
 use crate::dominio::colaborador::PerfilColaborador;
-use axum::extract::Path;
 
 #[axum::debug_handler]
 pub async fn consultar_perfil_colaborador(
@@ -109,8 +128,11 @@ use rust_decimal::Decimal;
 #[derive(Deserialize)]
 pub struct DatosCrearSolicitud {
     pub usuario_id: i32,
+    pub colaborador_id: i32,
     pub subcategoria_id: i32,
     pub urgencia: Urgencia,
+    pub descripcion_detallada: String,
+    pub fotos_evidencia_inicial: Option<String>,
     pub latitud: Decimal,
     pub longitud: Decimal,
 }
@@ -121,7 +143,16 @@ pub async fn crear_solicitud(
     Json(datos): Json<DatosCrearSolicitud>,
 ) -> Result<Json<SolicitudServicio>, AppError> {
     match estado.solicitud_servicio
-        .emparejar_y_solicitar(datos.usuario_id, datos.subcategoria_id, datos.urgencia, datos.latitud, datos.longitud)
+        .crear_solicitud_directa(
+            datos.usuario_id, 
+            datos.colaborador_id, 
+            datos.subcategoria_id, 
+            datos.urgencia, 
+            datos.descripcion_detallada, 
+            datos.fotos_evidencia_inicial, 
+            datos.latitud, 
+            datos.longitud
+        )
         .await
     {
         Ok(solicitud) => Ok(Json(solicitud)),

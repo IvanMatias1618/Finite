@@ -48,7 +48,13 @@ La API estará disponible en `http://localhost:3000`.
 - `src/dominio`: Entidades de negocio y puertos (interfaces).
 - `src/aplicacion`: Casos de uso y lógica de orquestación.
 - `src/infraestructura`: Implementaciones de persistencia y API REST.
-- `Sistema_finit/`: Documentación técnica detallada (flujos, estructuras, API).
+
+### 📚 Documentación Detallada (`Sistema_finit/`)
+Para profundizar en el diseño del motor, consulta los planos técnicos:
+- [Estructura de Datos](Sistema_finit/estructs.md)
+- [Funciones y Lógica](Sistema_finit/funciones.md)
+- [Guía de la API](Sistema_finit/api_uso.md)
+- [Arquitectura (Diagramas)](Sistema_finit/diagrama.md)
 
 ---
 

@@ -6,3 +6,4 @@ pub mod listar_categorias;
 pub mod listar_subcategorias;
 pub mod consultar_perfil_colaborador;
 pub mod listar_solicitudes;
+pub mod listar_colaboradores_marketplace;

@@ -36,13 +36,21 @@ impl CasoUsoConsultarPerfilColaborador {
         };
 
         let servicios = self.repo_servicio.buscar_por_colaborador(colaborador_id).await?;
+        let portafolio = self.repo_colaborador.buscar_portafolio_por_colaborador(colaborador_id).await?;
 
         Ok(Some(PerfilColaborador {
             id: colaborador.id.unwrap_or(colaborador_id),
             nombre: usuario.nombre,
             telefono: colaborador.telefono,
             sitio_web: colaborador.sitio_web,
+            foto_perfil: colaborador.foto_perfil,
+            especialidad_resumen: colaborador.especialidad_resumen,
+            es_verificado: colaborador.es_verificado,
+            medio_transporte: colaborador.medio_transporte,
+            rating_promedio: colaborador.rating_promedio,
+            total_servicios: colaborador.total_servicios,
             servicios,
+            portafolio,
         }))
     }
 }

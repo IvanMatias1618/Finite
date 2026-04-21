@@ -17,21 +17,25 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
 ### Consultar Perfil de Colaborador (`CasoUsoConsultarPerfilColaborador`)
 - **`ejecutar`**:
   - **Parámetros**: `colaborador_id`.
-  - **Lógica**: Obtiene los datos del colaborador, el nombre del usuario asociado y la lista completa de sus servicios.
+  - **Lógica**: Obtiene los datos del colaborador (incluyendo foto, especialidad y estado de verificación), el nombre del usuario, la lista de servicios y el portafolio de trabajos realizados.
 
-### Listar Categorias (`CasoUsoListarCategorias`)
+### Listar Colaboradores Marketplace (`CasoUsoListarColaboradoresMarketplace`)
 - **`ejecutar`**:
-  - **Lógica**: Recupera todas las categorias y, para cada una, anida sus subcategorias correspondientes.
+  - **Parámetros**: `subcategoria_id`, `latitud`, `longitud`.
+  - **Lógica**: 
+    1. Busca todos los servicios vinculados a la subcategoría en el radio de cobertura.
+    2. Cruza la información con el perfil Pro de los colaboradores.
+    3. Calcula el "precio desde" (Urgencia Baja).
+    4. Devuelve una lista ordenada por precio ascendente.
 
 ### Solicitud de Servicio (`CasoUsoSolicitudServicio`)
-- **`emparejar_y_solicitar`**:
-  - **Parámetros**: `usuario_id`, `subcategoria_id`, `urgencia`, `latitud`, `longitud`.
+- **`crear_solicitud_directa`**:
+  - **Parámetros**: `usuario_id`, `colaborador_id`, `subcategoria_id`, `urgencia`, `descripcion_detallada`, `fotos_evidencia_inicial`, `latitud`, `longitud`.
   - **Lógica**: 
-    1. Busca servicios cercanos vinculados a la `subcategoria_id` mediante SQL (`buscar_por_categoria_y_cercania`).
-    2. Itera sobre los candidatos y calcula la distancia física usando `calcular_distancia_km`.
-    3. Recupera el precio base según la `urgencia` solicitada.
-    4. Calcula el `precio_final = precio_urgencia + (distancia * precio_por_km)`.
-    5. Elige la opción más económica y crea la solicitud en estado `EnEsperaDePago`.
+    1. Valida que el colaborador ofrezca el servicio en la subcategoría indicada.
+    2. Calcula el `precio_final = precio_base(urgencia) + (distancia * precio_por_km)`.
+    3. Crea la solicitud en estado `PendienteDeRevision` adjuntando la evidencia del cliente.
+
 - **`calcular_distancia_km`**: Implementa la fórmula de Haversine para determinar la distancia en kilómetros entre dos puntos geodésicos.
 
 ## Capa de Dominio (Puertos)

@@ -10,10 +10,10 @@ Este documento describe la organización de archivos, carpetas y estructuras del
   - `main.rs`: Punto de entrada de la aplicación. Configura la base de datos y el servidor web.
   - `dominio/`: El núcleo del negocio. No tiene dependencias externas.
     - `usuario.rs`: Estructura `Usuario`. Representa tanto a clientes como a colaboradores.
-    - `colaborador.rs`: Estructuras `Colaborador` y `PerfilColaborador`. Datos profesionales y perfil completo.
-    - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`. Clasificación jerárquica de los servicios.
-    - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece (vinculado a una `subcategoria_id`), su ubicación (latitud/longitud) y cobertura.
-    - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida de una petición.
+    - `colaborador.rs`: Estructuras `Colaborador`, `PerfilColaborador` y `TrabajoPortafolio`. Datos profesionales, verificación y evidencias de trabajos anteriores (antes/después).
+    - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`. Clasificación jerárquica de los servicios (Lazy Load).
+    - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece, ubicación y cobertura.
+    - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida con estados Pro (`PendienteDeRevision`, `AceptadoPorColaborador`, `CitaProgramada`) y soporte para fotos de evidencia inicial.
     - `urgencia.rs`: ENUM `Urgencia`. Define los niveles de prioridad del servicio.
     - `puertos/`: **Interfaces (Traits)**. Definen qué puede hacer el sistema sin decir cómo.
       - `repositorio_usuario.rs`: Trait `RepositorioUsuario`.
@@ -23,8 +23,9 @@ Este documento describe la organización de archivos, carpetas y estructuras del
   - `aplicacion/`: Orquestación del negocio. Implementa los "Casos de Uso".
     - `servicios/`: Lógica de procesos complejos.
       - `registro_colaborador.rs`: Lógica para convertir un usuario en colaborador con sus servicios.
-      - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil público de un colaborador con sus servicios.
-      - `solicitud_servicio.rs`: El motor de búsqueda, emparejamiento (matching) y cálculo de precios basado en subcategorias y geolocalización.
+      - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil Pro de un colaborador con servicios y portafolio.
+      - `listar_colaboradores_marketplace.rs`: Lógica para buscar y filtrar profesionales cercanos.
+      - `solicitud_servicio.rs`: Creación de solicitudes con evidencia y cálculo de precios geolocalizados.
   - `infraestructura/`: Implementación de detalles técnicos y dependencias externas.
     - `mod.rs`: Definición de la estructura `RepositorioMySQL`.
     - `mysql_repositorio_*.rs`: Implementaciones concretas para producción.

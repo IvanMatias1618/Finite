@@ -1,14 +1,16 @@
+use std::sync::Arc;
 use axum::{routing::{get, post}, Router};
 use crate::aplicacion::servicios::registro_colaborador::CasoUsoRegistroColaborador;
 use crate::aplicacion::servicios::registro_usuario::CasoUsoRegistroUsuario;
 use crate::aplicacion::servicios::login_usuario::CasoUsoLoginUsuario;
 use crate::aplicacion::servicios::listar_categorias::CasoUsoListarCategorias;
-use crate::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultarPerfilColaborador;
-use crate::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
-use crate::aplicacion::servicios::listar_categorias::CasoUsoListarCategorias;
 use crate::aplicacion::servicios::listar_subcategorias::CasoUsoListarSubcategorias;
 use crate::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultarPerfilColaborador;
-...
+use crate::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
+use crate::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
+use crate::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
+use super::manejadores;
+
 pub struct EstadoApp {
     pub registro_colaborador: Arc<CasoUsoRegistroColaborador>,
     pub registro_usuario: Arc<CasoUsoRegistroUsuario>,
@@ -18,6 +20,7 @@ pub struct EstadoApp {
     pub consultar_perfil_colaborador: Arc<CasoUsoConsultarPerfilColaborador>,
     pub solicitud_servicio: Arc<CasoUsoSolicitudServicio>,
     pub listar_solicitudes: Arc<CasoUsoListarSolicitudes>,
+    pub listar_colaboradores_marketplace: Arc<CasoUsoListarColaboradoresMarketplace>,
 }
 
 pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
@@ -29,8 +32,8 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/login", post(manejadores::login_usuario))
         .route("/categorias", get(manejadores::listar_categorias))
         .route("/categorias/:id/subcategorias", get(manejadores::listar_subcategorias))
+        .route("/subcategorias/:id/colaboradores", get(manejadores::listar_colaboradores_marketplace))
         .route("/solicitudes", post(manejadores::crear_solicitud))
         .route("/solicitudes", get(manejadores::listar_solicitudes))
         .with_state(estado)
-}
 }
