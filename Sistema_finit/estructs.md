@@ -14,18 +14,21 @@ Este documento describe la organización de archivos, carpetas y estructuras del
     - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`. Clasificación jerárquica de los servicios (Lazy Load).
     - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece, ubicación y cobertura.
     - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida con estados Pro (`PendienteDeRevision`, `AceptadoPorColaborador`, `CitaProgramada`) y soporte para fotos de evidencia inicial.
+    - `mensaje.rs`: Estructura `MensajeSolicitud`. Representa un mensaje dentro del chat de una solicitud.
     - `urgencia.rs`: ENUM `Urgencia`. Define los niveles de prioridad del servicio.
     - `puertos/`: **Interfaces (Traits)**. Definen qué puede hacer el sistema sin decir cómo.
       - `repositorio_usuario.rs`: Trait `RepositorioUsuario`.
       - `repositorio_colaborador.rs`: Trait `RepositorioColaborador`.
       - `repositorio_servicio.rs`: Trait `RepositorioServicio`.
       - `repositorio_solicitud.rs`: Trait `RepositorioSolicitud`.
+      - `repositorio_mensaje.rs`: Trait `RepositorioMensaje`.
   - `aplicacion/`: Orquestación del negocio. Implementa los "Casos de Uso".
     - `servicios/`: Lógica de procesos complejos.
       - `registro_colaborador.rs`: Lógica para convertir un usuario en colaborador con sus servicios.
       - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil Pro de un colaborador con servicios y portafolio.
       - `listar_colaboradores_marketplace.rs`: Lógica para buscar y filtrar profesionales cercanos.
       - `solicitud_servicio.rs`: Creación de solicitudes con evidencia y cálculo de precios geolocalizados.
+      - `gestionar_mensajes.rs`: Lógica de chat (enviar y listar mensajes) vinculado a solicitudes.
   - `infraestructura/`: Implementación de detalles técnicos y dependencias externas.
     - `mod.rs`: Definición de la estructura `RepositorioMySQL`.
     - `mysql_repositorio_*.rs`: Implementaciones concretas para producción.

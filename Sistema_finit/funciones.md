@@ -33,8 +33,16 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
   - **Parámetros**: `usuario_id`, `colaborador_id`, `subcategoria_id`, `urgencia`, `descripcion_detallada`, `fotos_evidencia_inicial`, `latitud`, `longitud`.
   - **Lógica**: 
     1. Valida que el colaborador ofrezca el servicio en la subcategoría indicada.
-    2. Calcula el `precio_final = precio_base(urgencia) + (distancia * precio_por_km)`.
+    2. Calcula el `precio_final = precio_base(urgencia) + (distancia * precio_por_kilometro)`.
     3. Crea la solicitud en estado `PendienteDeRevision` adjuntando la evidencia del cliente.
+
+### Gestionar Mensajes (`CasoUsoGestionarMensajes`)
+- **`enviar_mensaje`**:
+  - **Parámetros**: `solicitud_id`, `emisor_id`, `contenido`.
+  - **Lógica**: Persiste un nuevo mensaje de texto vinculado a una solicitud existente para permitir la negociación o aclaraciones.
+- **`listar_mensajes`**:
+  - **Parámetros**: `solicitud_id`.
+  - **Lógica**: Recupera el historial completo de mensajes de una solicitud ordenados por fecha.
 
 - **`calcular_distancia_km`**: Implementa la fórmula de Haversine para determinar la distancia en kilómetros entre dos puntos geodésicos.
 

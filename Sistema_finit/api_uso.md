@@ -134,7 +134,8 @@ Por defecto local: `http://localhost:3000`
 - **Filtros (Query Params)**:
   - `usuario_id` (opcional): Filtrar por el ID de un usuario específico.
 - **Ejemplo**: `/solicitudes?usuario_id=1`
-- **Respuesta (JSON)**:
+### 10. Listar Solicitudes
+...
   ```json
   [
     {
@@ -151,6 +152,34 @@ Por defecto local: `http://localhost:3000`
       "latitud_usuario": "19.4326",
       "longitud_usuario": "-99.1332",
       "fecha_creacion": "2023-10-27T10:00:00Z"
+    }
+  ]
+  ```
+
+### 11. Enviar Mensaje (Chat de Solicitud)
+**POST** `/solicitudes/:id/mensajes`
+- **Uso**: Enviar un mensaje de texto dentro de una solicitud activa.
+- **Cuerpo (JSON)**:
+  ```json
+  {
+    "emisor_id": 1,
+    "contenido": "¿A qué hora podría pasar a revisar la tubería?"
+  }
+  ```
+- **Respuesta (JSON)**: El mensaje creado con su ID y fecha de envío.
+
+### 12. Listar Historial de Mensajes
+**GET** `/solicitudes/:id/mensajes`
+- **Uso**: Obtener todos los mensajes intercambiados en una solicitud, ordenados cronológicamente.
+- **Respuesta (JSON)**:
+  ```json
+  [
+    {
+      "id": 1,
+      "solicitud_id": 1,
+      "emisor_id": 1,
+      "contenido": "¿A qué hora podría pasar?",
+      "fecha_envio": "2023-10-27T11:00:00Z"
     }
   ]
   ```

@@ -3,12 +3,14 @@ use crate::dominio::colaborador::{Colaborador, TrabajoPortafolio};
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use crate::dominio::urgencia::Urgencia;
+use crate::dominio::mensaje::MensajeSolicitud;
 use crate::dominio::categoria::{Categoria, Subcategoria};
 use crate::dominio::puertos::repositorio_categoria::RepositorioCategoria;
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use crate::dominio::puertos::repositorio_servicio::RepositorioServicio;
 use crate::dominio::puertos::repositorio_solicitud::RepositorioSolicitud;
+use crate::dominio::puertos::repositorio_mensaje::RepositorioMensaje;
 use std::error::Error;
 use async_trait::async_trait;
 use sqlx::{SqlitePool, Row};
@@ -39,6 +41,8 @@ impl RepositorioSQLite {
         sqlx::query("CREATE TABLE IF NOT EXISTS precio_servicio_urgencia (id INTEGER PRIMARY KEY AUTOINCREMENT, servicio_id INTEGER, urgencia TEXT, precio TEXT)")
             .execute(&self.pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, colaborador_id INTEGER, subcategoria_id INTEGER, servicio_id INTEGER, urgencia TEXT, precio_final TEXT, estado TEXT, descripcion_detallada TEXT, fotos_evidencia_inicial TEXT, latitud_usuario TEXT, longitud_usuario TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
+            .execute(&self.pool).await?;
+        sqlx::query("CREATE TABLE IF NOT EXISTS mensaje_solicitud (id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER, emisor_id INTEGER, contenido TEXT, fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
             .execute(&self.pool).await?;
         Ok(())
     }
@@ -212,6 +216,33 @@ impl RepositorioSolicitud for RepositorioSQLite {
         sqlx::query("UPDATE solicitud_servicio SET estado = ? WHERE id = ?")
             .bind(estado_str).bind(id).execute(&self.pool).await?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl RepositorioMensaje for RepositorioSQLite {
+    async fn guardar(&self, mensaje: MensajeSolicitud) -> Result<MensajeSolicitud, Box<dyn Error + Send + Sync>> {
+        let resultado = sqlx::query("INSERT INTO mensaje_solicitud (solicitud_id, emisor_id, contenido) VALUES (?, ?, ?)")
+            .bind(mensaje.solicitud_id).bind(mensaje.emisor_id).bind(&mensaje.contenido).execute(&self.pool).await?;
+        Ok(MensajeSolicitud { id: Some(resultado.last_insert_rowid() as i32), ..mensaje })
+    }
+    async fn listar_por_solicitud(&self, solicitud_id: i32) -> Result<Vec<MensajeSolicitud>, Box<dyn Error + Send + Sync>> {
+        let rows = sqlx::query("SELECT id, solicitud_id, emisor_id, contenido, fecha_envio FROM mensaje_solicitud WHERE solicitud_id = ? ORDER BY fecha_envio ASC")
+            .bind(solicitud_id).fetch_all(&self.pool).await?;
+        
+        use chrono::{DateTime, Utc};
+        let mut mensajes = Vec::new();
+        for r in rows {
+            let fecha_str: String = r.get(4);
+            mensajes.push(MensajeSolicitud {
+                id: Some(r.get(0)),
+                solicitud_id: r.get(1),
+                emisor_id: r.get(2),
+                contenido: r.get(3),
+                fecha_envio: Some(DateTime::parse_from_str(&format!("{} +0000", fecha_str), "%Y-%m-%d %H:%M:%S %z")?.with_timezone(&Utc)),
+            });
+        }
+        Ok(mensajes)
     }
 }
 

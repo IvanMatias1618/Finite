@@ -9,6 +9,7 @@ use finit::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultar
 use finit::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use finit::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
+use finit::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
 use sqlx::SqlitePool;
 use tower_http::cors::CorsLayer;
@@ -68,6 +69,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let gestionar_mensajes = Arc::new(CasoUsoGestionarMensajes::nuevo(
+        repositorio.clone(),
+    ));
+
     let estado = Arc::new(EstadoApp {
         registro_colaborador,
         registro_usuario,
@@ -78,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         solicitud_servicio,
         listar_solicitudes,
         listar_colaboradores_marketplace,
+        gestionar_mensajes,
     });
 
     // Configurar Rutas

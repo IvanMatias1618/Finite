@@ -69,6 +69,37 @@ pub async fn listar_subcategorias(
 
 use crate::aplicacion::servicios::listar_colaboradores_marketplace::ColaboradorMarketplace;
 
+use crate::dominio::mensaje::MensajeSolicitud;
+
+#[derive(Deserialize)]
+pub struct DatosEnviarMensaje {
+    pub emisor_id: i32,
+    pub contenido: String,
+}
+
+#[axum::debug_handler]
+pub async fn enviar_mensaje(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    Json(datos): Json<DatosEnviarMensaje>,
+) -> Result<Json<MensajeSolicitud>, AppError> {
+    match estado.gestionar_mensajes.enviar_mensaje(id, datos.emisor_id, datos.contenido).await {
+        Ok(mensaje) => Ok(Json(mensaje)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[axum::debug_handler]
+pub async fn listar_mensajes(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+) -> Result<Json<Vec<MensajeSolicitud>>, AppError> {
+    match estado.gestionar_mensajes.listar_mensajes(id).await {
+        Ok(mensajes) => Ok(Json(mensajes)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct QueryMarketplace {
     pub latitud: Decimal,

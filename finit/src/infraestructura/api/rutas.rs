@@ -9,6 +9,7 @@ use crate::aplicacion::servicios::consultar_perfil_colaborador::CasoUsoConsultar
 use crate::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use crate::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use crate::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
+use crate::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
 use super::manejadores;
 
 pub struct EstadoApp {
@@ -21,6 +22,7 @@ pub struct EstadoApp {
     pub solicitud_servicio: Arc<CasoUsoSolicitudServicio>,
     pub listar_solicitudes: Arc<CasoUsoListarSolicitudes>,
     pub listar_colaboradores_marketplace: Arc<CasoUsoListarColaboradoresMarketplace>,
+    pub gestionar_mensajes: Arc<CasoUsoGestionarMensajes>,
 }
 
 pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
@@ -35,5 +37,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/subcategorias/:id/colaboradores", get(manejadores::listar_colaboradores_marketplace))
         .route("/solicitudes", post(manejadores::crear_solicitud))
         .route("/solicitudes", get(manejadores::listar_solicitudes))
+        .route("/solicitudes/:id/mensajes", post(manejadores::enviar_mensaje))
+        .route("/solicitudes/:id/mensajes", get(manejadores::listar_mensajes))
         .with_state(estado)
 }
