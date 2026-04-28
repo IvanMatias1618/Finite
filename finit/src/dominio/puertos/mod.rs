@@ -4,3 +4,5 @@ pub mod repositorio_servicio;
 pub mod repositorio_solicitud;
 pub mod repositorio_mensaje;
 pub mod repositorio_categoria;
+pub mod repositorio_disponibilidad;
+pub mod repositorio_configuracion_precio;

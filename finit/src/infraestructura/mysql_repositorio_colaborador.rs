@@ -1,4 +1,4 @@
-use crate::dominio::colaborador::{Colaborador, TrabajoPortafolio};
+use crate::dominio::colaborador::{Colaborador, TrabajoPortafolio, EstadoVerificacion};
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use crate::infraestructura::RepositorioMySQL;
 use std::error::Error;
@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 impl RepositorioColaborador for RepositorioMySQL {
     async fn guardar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO colaborador (usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, medio_transporte, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO colaborador (usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(colaborador.usuario_id)
         .bind(&colaborador.telefono)
@@ -18,6 +18,11 @@ impl RepositorioColaborador for RepositorioMySQL {
         .bind(&colaborador.foto_perfil)
         .bind(&colaborador.especialidad_resumen)
         .bind(colaborador.es_verificado)
+        .bind(colaborador.estado_verificacion)
+        .bind(&colaborador.ine_frontal)
+        .bind(&colaborador.ine_trasera)
+        .bind(&colaborador.comprobante_domicilio)
+        .bind(&colaborador.foto_selfie_ine)
         .bind(&colaborador.medio_transporte)
         .bind(colaborador.rating_promedio)
         .bind(colaborador.total_servicios)
@@ -31,9 +36,33 @@ impl RepositorioColaborador for RepositorioMySQL {
         })
     }
 
+    async fn actualizar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
+        sqlx::query(
+            "UPDATE colaborador SET telefono = ?, sitio_web = ?, foto_perfil = ?, especialidad_resumen = ?, es_verificado = ?, estado_verificacion = ?, ine_frontal = ?, ine_trasera = ?, comprobante_domicilio = ?, foto_selfie_ine = ?, medio_transporte = ?, rating_promedio = ?, total_servicios = ? WHERE id = ?"
+        )
+        .bind(&colaborador.telefono)
+        .bind(&colaborador.sitio_web)
+        .bind(&colaborador.foto_perfil)
+        .bind(&colaborador.especialidad_resumen)
+        .bind(colaborador.es_verificado)
+        .bind(colaborador.estado_verificacion)
+        .bind(&colaborador.ine_frontal)
+        .bind(&colaborador.ine_trasera)
+        .bind(&colaborador.comprobante_domicilio)
+        .bind(&colaborador.foto_selfie_ine)
+        .bind(&colaborador.medio_transporte)
+        .bind(colaborador.rating_promedio)
+        .bind(colaborador.total_servicios)
+        .bind(colaborador.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(colaborador)
+    }
+
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Colaborador>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, Colaborador>(
-            "SELECT id, usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, medio_transporte, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
+            "SELECT id, usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)

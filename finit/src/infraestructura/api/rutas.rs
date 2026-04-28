@@ -12,6 +12,10 @@ use crate::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoLista
 use crate::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
 use super::manejadores;
 
+use crate::aplicacion::servicios::actualizar_documentacion::CasoUsoActualizarDocumentacion;
+use crate::aplicacion::servicios::configurar_precios_dinamicos::CasoUsoConfigurarPreciosDinamicos;
+use crate::aplicacion::servicios::configurar_horarios::CasoUsoConfigurarHorarios;
+
 pub struct EstadoApp {
     pub registro_colaborador: Arc<CasoUsoRegistroColaborador>,
     pub registro_usuario: Arc<CasoUsoRegistroUsuario>,
@@ -23,6 +27,9 @@ pub struct EstadoApp {
     pub listar_solicitudes: Arc<CasoUsoListarSolicitudes>,
     pub listar_colaboradores_marketplace: Arc<CasoUsoListarColaboradoresMarketplace>,
     pub gestionar_mensajes: Arc<CasoUsoGestionarMensajes>,
+    pub actualizar_documentacion: Arc<CasoUsoActualizarDocumentacion>,
+    pub configurar_precios_dinamicos: Arc<CasoUsoConfigurarPreciosDinamicos>,
+    pub configurar_horarios: Arc<CasoUsoConfigurarHorarios>,
 }
 
 pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
@@ -30,6 +37,9 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/", get(|| async { "Bienvenido al motor finit - API activa (okupo.db)" }))
         .route("/colaboradores", post(manejadores::registrar_colaborador))
         .route("/colaboradores/:id", get(manejadores::consultar_perfil_colaborador))
+        .route("/colaboradores/:id/documentacion", post(manejadores::actualizar_documentacion))
+        .route("/colaboradores/:id/precios-dinamicos", post(manejadores::configurar_precios_dinamicos))
+        .route("/colaboradores/:id/horarios", post(manejadores::configurar_horarios))
         .route("/usuarios", post(manejadores::registrar_usuario))
         .route("/login", post(manejadores::login_usuario))
         .route("/categorias", get(manejadores::listar_categorias))

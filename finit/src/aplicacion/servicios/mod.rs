@@ -8,3 +8,6 @@ pub mod consultar_perfil_colaborador;
 pub mod listar_solicitudes;
 pub mod listar_colaboradores_marketplace;
 pub mod gestionar_mensajes;
+pub mod actualizar_documentacion;
+pub mod configurar_precios_dinamicos;
+pub mod configurar_horarios;

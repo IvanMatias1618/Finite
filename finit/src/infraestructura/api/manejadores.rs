@@ -228,3 +228,63 @@ pub async fn registrar_colaborador(
         Err(e) => Err(AppError(e.to_string())),
     }
 }
+
+#[derive(Deserialize)]
+pub struct DatosDocumentacion {
+    pub ine_frontal: String,
+    pub ine_trasera: String,
+    pub comprobante_domicilio: String,
+    pub foto_selfie_ine: String,
+}
+
+#[axum::debug_handler]
+pub async fn actualizar_documentacion(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    Json(datos): Json<DatosDocumentacion>,
+) -> Result<StatusCode, AppError> {
+    match estado.actualizar_documentacion
+        .ejecutar(id, datos.ine_frontal, datos.ine_trasera, datos.comprobante_domicilio, datos.foto_selfie_ine)
+        .await
+    {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DatosPreciosDinamicos {
+    pub precio_por_kilometro: Decimal,
+    pub recargo_lluvia: Decimal,
+    pub recargo_domingo: Decimal,
+    pub recargo_nocturno: Decimal,
+}
+
+#[axum::debug_handler]
+pub async fn configurar_precios_dinamicos(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    Json(datos): Json<DatosPreciosDinamicos>,
+) -> Result<StatusCode, AppError> {
+    match estado.configurar_precios_dinamicos
+        .ejecutar(id, datos.precio_por_kilometro, datos.recargo_lluvia, datos.recargo_domingo, datos.recargo_nocturno)
+        .await
+    {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+use crate::dominio::disponibilidad::Disponibilidad;
+
+#[axum::debug_handler]
+pub async fn configurar_horarios(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    Json(horarios): Json<Vec<Disponibilidad>>,
+) -> Result<StatusCode, AppError> {
+    match estado.configurar_horarios.ejecutar(id, horarios).await {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}

@@ -7,11 +7,18 @@ use std::sync::Arc;
 
 pub struct CasoUsoLoginUsuario {
     repositorio_usuario: Arc<dyn RepositorioUsuario>,
+    jwt_secret: String,
 }
 
 impl CasoUsoLoginUsuario {
-    pub fn nuevo(repositorio_usuario: Arc<dyn RepositorioUsuario>) -> Self {
-        Self { repositorio_usuario }
+    pub fn nuevo(
+        repositorio_usuario: Arc<dyn RepositorioUsuario>,
+        jwt_secret: String,
+    ) -> Self {
+        Self { 
+            repositorio_usuario,
+            jwt_secret,
+        }
     }
 
     pub async fn ejecutar(
@@ -42,7 +49,7 @@ impl CasoUsoLoginUsuario {
         let token = encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret("secreto_finit".as_ref()),
+            &EncodingKey::from_secret(self.jwt_secret.as_ref()),
         )?;
         
         Ok(token)

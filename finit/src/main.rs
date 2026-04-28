@@ -10,26 +10,37 @@ use finit::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use finit::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
 use finit::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
-use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
-use sqlx::SqlitePool;
+use finit::aplicacion::servicios::actualizar_documentacion::CasoUsoActualizarDocumentacion;
+use finit::aplicacion::servicios::configurar_precios_dinamicos::CasoUsoConfigurarPreciosDinamicos;
+use finit::aplicacion::servicios::configurar_horarios::CasoUsoConfigurarHorarios;
+use finit::infraestructura::RepositorioMySQL;
+use sqlx::MySqlPool;
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Iniciando motor finit con SQLite (okupo.db)...");
-    
-    let pool = SqlitePool::connect("sqlite:infraestructura/okupo.db").await?;
+    dotenvy::dotenv().ok(); // Carga las variables de entorno
 
-    let repositorio = Arc::new(RepositorioSQLite::nuevo(pool));
+    println!("Iniciando motor finit (Versión MySQL)...");
     
-    // Inicializar tablas en SQLite
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL no definida en .env");
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secreto_finit".to_string());
+    let puerto = std::env::var("PUERTO").unwrap_or_else(|_| "3000".to_string());
+
+    println!("Conectando a MySQL...");
+    let pool = MySqlPool::connect(&db_url).await?;
+
+    let repositorio = Arc::new(RepositorioMySQL::nuevo(pool));
+    
+    // Inicializar tablas y datos semilla
     repositorio.inicializar_tablas().await?;
 
-    // Inicializar Casos de Uso
+    // Inicializar Casos de Uso con secretos
     let registro_colaborador = Arc::new(CasoUsoRegistroColaborador::nuevo(
         repositorio.clone(),
         repositorio.clone(),
         repositorio.clone(),
+        jwt_secret.clone(),
     ));
 
     let registro_usuario = Arc::new(CasoUsoRegistroUsuario::nuevo(
@@ -38,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let login_usuario = Arc::new(CasoUsoLoginUsuario::nuevo(
         repositorio.clone(),
+        jwt_secret.clone(),
     ));
 
     let listar_categorias = Arc::new(CasoUsoListarCategorias::nuevo(
@@ -73,6 +85,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let actualizar_documentacion = Arc::new(CasoUsoActualizarDocumentacion::nuevo(
+        repositorio.clone(),
+    ));
+
+    let configurar_precios_dinamicos = Arc::new(CasoUsoConfigurarPreciosDinamicos::nuevo(
+        repositorio.clone(),
+    ));
+
+    let configurar_horarios = Arc::new(CasoUsoConfigurarHorarios::nuevo(
+        repositorio.clone(),
+    ));
+
     let estado = Arc::new(EstadoApp {
         registro_colaborador,
         registro_usuario,
@@ -84,6 +108,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         listar_solicitudes,
         listar_colaboradores_marketplace,
         gestionar_mensajes,
+        actualizar_documentacion,
+        configurar_precios_dinamicos,
+        configurar_horarios,
     });
 
     // Configurar Rutas
@@ -91,9 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .layer(CorsLayer::permissive());
 
     // Iniciar Servidor
-    let puerto = "3000";
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", puerto)).await?;
-    println!("Servidor finit iniciado en http://localhost:{}", puerto);
+    println!("🚀 Servidor finit iniciado en http://localhost:{}", puerto);
     
     axum::serve(listener, app).await?;
 

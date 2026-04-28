@@ -1,4 +1,4 @@
-use crate::dominio::colaborador::Colaborador;
+use crate::dominio::colaborador::{Colaborador, EstadoVerificacion};
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
@@ -13,6 +13,7 @@ pub struct CasoUsoRegistroColaborador {
     repositorio_usuario: Arc<dyn RepositorioUsuario>,
     repositorio_colaborador: Arc<dyn RepositorioColaborador>,
     repositorio_servicio: Arc<dyn RepositorioServicio>,
+    jwt_secret: String,
 }
 
 impl CasoUsoRegistroColaborador {
@@ -20,11 +21,13 @@ impl CasoUsoRegistroColaborador {
         repositorio_usuario: Arc<dyn RepositorioUsuario>,
         repositorio_colaborador: Arc<dyn RepositorioColaborador>,
         repositorio_servicio: Arc<dyn RepositorioServicio>,
+        jwt_secret: String,
     ) -> Self {
         Self {
             repositorio_usuario,
             repositorio_colaborador,
             repositorio_servicio,
+            jwt_secret,
         }
     }
 
@@ -38,7 +41,7 @@ impl CasoUsoRegistroColaborador {
         // Decodificar el token JWT
         let token_data = decode::<Claims>(
             &token_usuario,
-            &DecodingKey::from_secret("secreto_finit".as_ref()),
+            &DecodingKey::from_secret(self.jwt_secret.as_ref()),
             &Validation::default(),
         ).map_err(|_| "Token de usuario invalido o expirado")?;
 
@@ -57,6 +60,11 @@ impl CasoUsoRegistroColaborador {
             foto_perfil: None,
             especialidad_resumen: None,
             es_verificado: false,
+            estado_verificacion: EstadoVerificacion::Pendiente,
+            ine_frontal: None,
+            ine_trasera: None,
+            comprobante_domicilio: None,
+            foto_selfie_ine: None,
             medio_transporte: None,
             rating_promedio: Decimal::ZERO,
             total_servicios: 0,
