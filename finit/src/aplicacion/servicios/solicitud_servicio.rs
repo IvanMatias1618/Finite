@@ -2,7 +2,6 @@ use crate::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use crate::dominio::urgencia::Urgencia;
 use crate::dominio::puertos::repositorio_solicitud::RepositorioSolicitud;
 use crate::dominio::puertos::repositorio_servicio::RepositorioServicio;
-use crate::dominio::servicio::Servicio;
 use std::error::Error;
 use std::sync::Arc;
 use rust_decimal::Decimal;

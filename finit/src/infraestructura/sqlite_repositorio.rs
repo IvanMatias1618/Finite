@@ -1,5 +1,5 @@
 use crate::dominio::usuario::Usuario;
-use crate::dominio::colaborador::{Colaborador, TrabajoPortafolio, EstadoVerificacion};
+use crate::dominio::colaborador::{Colaborador, TrabajoPortafolio, EstadoVerificacion, ResumenEstadisticasColaborador};
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use crate::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use crate::dominio::urgencia::Urgencia;
@@ -15,10 +15,12 @@ use crate::dominio::puertos::repositorio_solicitud::RepositorioSolicitud;
 use crate::dominio::puertos::repositorio_mensaje::RepositorioMensaje;
 use crate::dominio::puertos::repositorio_disponibilidad::RepositorioDisponibilidad;
 use crate::dominio::puertos::repositorio_configuracion_precio::RepositorioConfiguracionPrecio;
+use crate::dominio::puertos::repositorio_resennia::RepositorioResennia;
+use crate::dominio::resennia::Resennia;
 use std::error::Error;
 use async_trait::async_trait;
 use sqlx::{SqlitePool, Row};
-use rust_decimal::Decimal;
+use rust_decimal::prelude::*;
 
 pub struct RepositorioSQLite {
     pub pool: SqlitePool,
@@ -66,6 +68,9 @@ impl RepositorioSQLite {
         
         sqlx::query("CREATE TABLE IF NOT EXISTS mensaje_solicitud (id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER, emisor_id INTEGER, contenido TEXT, fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
             .execute(&self.pool).await?;
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS resennia (id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER, calificacion INTEGER, comentario TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
+            .execute(&self.pool).await?;
         Ok(())
     }
 }
@@ -82,6 +87,12 @@ impl RepositorioCategoria for RepositorioSQLite {
             .bind(categoria_id)
             .fetch_all(&self.pool).await?;
         Ok(subcategorias)
+    }
+    async fn buscar_subcategoria_por_id(&self, id: i32) -> Result<Option<Subcategoria>, Box<dyn Error + Send + Sync>> {
+        let subcategoria = sqlx::query_as::<_, Subcategoria>("SELECT id, categoria_id, nombre, descripcion FROM subcategoria WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool).await?;
+        Ok(subcategoria)
     }
 }
 
@@ -148,6 +159,61 @@ impl RepositorioColaborador for RepositorioSQLite {
         let trabajos = sqlx::query_as::<_, TrabajoPortafolio>("SELECT id, colaborador_id, foto_antes, foto_despues, descripcion FROM portafolio_colaborador WHERE colaborador_id = ?")
             .bind(colaborador_id).fetch_all(&self.pool).await?;
         Ok(trabajos)
+    }
+
+    async fn eliminar_trabajo_portafolio(&self, trabajo_id: i32) -> Result<(), Box<dyn Error + Send + Sync>> {
+        sqlx::query("DELETE FROM portafolio_colaborador WHERE id = ?")
+            .bind(trabajo_id).execute(&self.pool).await?;
+        Ok(())
+    }
+
+    async fn obtener_estadisticas(&self, colaborador_id: i32) -> Result<ResumenEstadisticasColaborador, Box<dyn Error + Send + Sync>> {
+        use crate::dominio::colaborador::ResumenEstadisticasColaborador;
+
+        let r = sqlx::query("SELECT total_servicios, rating_promedio FROM colaborador WHERE id = ?")
+            .bind(colaborador_id)
+            .fetch_one(&self.pool).await?;
+        
+        let total_servicios: i32 = r.get(0);
+        let rating_promedio: Decimal = r.get::<String, _>(1).parse().unwrap_or(Decimal::ZERO);
+
+        let ganancias = sqlx::query("SELECT SUM(CAST(precio_final AS REAL)) FROM solicitud_servicio WHERE colaborador_id = ? AND estado = 'terminado'")
+            .bind(colaborador_id)
+            .fetch_one(&self.pool).await?;
+        
+        let ganancias_totales = Decimal::from_f64_retain(ganancias.get::<Option<f64>, _>(0).unwrap_or(0.0)).unwrap_or(Decimal::ZERO);
+
+        let pendientes = sqlx::query("SELECT COUNT(*) FROM solicitud_servicio WHERE colaborador_id = ? AND estado = 'pendiente_de_revision'")
+            .bind(colaborador_id)
+            .fetch_one(&self.pool).await?;
+        
+        let servicios_pendientes: i32 = pendientes.get(0);
+
+        Ok(ResumenEstadisticasColaborador {
+            total_servicios,
+            rating_promedio,
+            ganancias_totales,
+            servicios_pendientes,
+        })
+    }
+
+    async fn listar_todos(&self) -> Result<Vec<Colaborador>, Box<dyn Error + Send + Sync>> {
+        let rows = sqlx::query("SELECT id, usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador").fetch_all(&self.pool).await?;
+        
+        let mut colaboradores = Vec::new();
+        for r in rows {
+            colaboradores.push(Colaborador {
+                id: Some(r.get(0)), usuario_id: r.get(1), telefono: r.get(2), sitio_web: r.get(3),
+                foto_perfil: r.get(4), especialidad_resumen: r.get(5),
+                es_verificado: r.get::<i32, _>(6) != 0,
+                estado_verificacion: EstadoVerificacion::desde_cadena_sqlite(&r.get::<String, _>(7)),
+                ine_frontal: r.get(8), ine_trasera: r.get(9), comprobante_domicilio: r.get(10), foto_selfie_ine: r.get(11),
+                medio_transporte: r.get(12),
+                rating_promedio: r.get::<String, _>(13).parse().unwrap_or(Decimal::ZERO),
+                total_servicios: r.get(14),
+            });
+        }
+        Ok(colaboradores)
     }
 }
 
@@ -263,7 +329,16 @@ impl RepositorioSolicitud for RepositorioSQLite {
             .execute(&self.pool).await?;
         Ok(SolicitudServicio { id: Some(resultado.last_insert_rowid() as i32), ..solicitud })
     }
-    async fn buscar_por_id(&self, _id: i32) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> { Ok(None) }
+    async fn buscar_por_id(&self, id: i32) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let row = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE id = ?")
+            .bind(id).fetch_optional(&self.pool).await?;
+        
+        if let Some(r) = row {
+            Ok(Some(self.mapear_solicitud(r)?))
+        } else {
+            Ok(None)
+        }
+    }
     
     async fn listar_por_usuario(&self, usuario_id: i32) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
         let rows = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ?")
@@ -326,6 +401,18 @@ impl RepositorioMensaje for RepositorioSQLite {
             });
         }
         Ok(mensajes)
+    }
+}
+
+#[async_trait]
+impl RepositorioResennia for RepositorioSQLite {
+    async fn guardar(&self, resennia: Resennia) -> Result<Resennia, Box<dyn Error + Send + Sync>> {
+        let resultado = sqlx::query("INSERT INTO resennia (solicitud_id, calificacion, comentario) VALUES (?, ?, ?)")
+            .bind(resennia.solicitud_id).bind(resennia.calificacion).bind(&resennia.comentario).execute(&self.pool).await?;
+        Ok(Resennia { id: Some(resultado.last_insert_rowid() as i32), ..resennia })
+    }
+    async fn buscar_por_solicitud(&self, solicitud_id: i32) -> Result<Option<Resennia>, Box<dyn Error + Send + Sync>> {
+        Ok(sqlx::query_as::<_, Resennia>("SELECT id, solicitud_id, calificacion, comentario, fecha_creacion FROM resennia WHERE solicitud_id = ?").bind(solicitud_id).fetch_optional(&self.pool).await?)
     }
 }
 

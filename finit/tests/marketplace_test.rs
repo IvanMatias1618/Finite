@@ -1,6 +1,5 @@
 use finit::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
-use finit::dominio::urgencia::Urgencia;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use rust_decimal::Decimal;

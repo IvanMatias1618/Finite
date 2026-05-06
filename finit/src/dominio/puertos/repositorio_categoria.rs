@@ -6,4 +6,5 @@ use async_trait::async_trait;
 pub trait RepositorioCategoria: Send + Sync {
     async fn listar(&self) -> Result<Vec<Categoria>, Box<dyn Error + Send + Sync>>;
     async fn listar_subcategorias(&self, categoria_id: i32) -> Result<Vec<Subcategoria>, Box<dyn Error + Send + Sync>>;
+    async fn buscar_subcategoria_por_id(&self, id: i32) -> Result<Option<Subcategoria>, Box<dyn Error + Send + Sync>>;
 }

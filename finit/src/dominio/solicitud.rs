@@ -3,7 +3,7 @@ use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
 use super::urgencia::Urgencia;
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq)]
 #[sqlx(rename_all = "snake_case")]
 #[serde(rename_all = "lowercase")]
 pub enum EstadoSolicitud {

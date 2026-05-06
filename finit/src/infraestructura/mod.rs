@@ -1,5 +1,5 @@
 use std::error::Error;
-use sqlx::{MySql, MySqlPool};
+use sqlx::MySqlPool;
 
 pub mod mysql_repositorio_usuario;
 pub mod mysql_repositorio_colaborador;
@@ -9,6 +9,8 @@ pub mod mysql_repositorio_categoria;
 pub mod mysql_repositorio_mensaje;
 pub mod mysql_repositorio_disponibilidad;
 pub mod mysql_repositorio_configuracion_precio;
+pub mod mysql_repositorio_resennia;
+pub mod sqlite_repositorio;
 pub mod api;
 
 pub struct RepositorioMySQL {
@@ -25,15 +27,35 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT)")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion VARCHAR(50) DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
             .execute(&self.pool).await?;
 
-        // Intentar añadir columnas si la tabla ya existia sin ellas
-        let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN IF NOT EXISTS estado_verificacion VARCHAR(50) DEFAULT 'pendiente'").execute(&self.pool).await;
-        let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN IF NOT EXISTS ine_frontal TEXT").execute(&self.pool).await;
-        let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN IF NOT EXISTS ine_trasera TEXT").execute(&self.pool).await;
-        let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN IF NOT EXISTS comprobante_domicilio TEXT").execute(&self.pool).await;
-        let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN IF NOT EXISTS foto_selfie_ine TEXT").execute(&self.pool).await;
+        // Asegurar que estado_verificacion sea ENUM si ya existia como TEXT/VARCHAR
+        let _ = sqlx::query("ALTER TABLE colaborador MODIFY COLUMN estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente'")
+            .execute(&self.pool).await;
+
+        // Migraciones manuales: Comprobar si las columnas existen antes de añadirlas
+        let columnas_esperadas = vec![
+            ("estado_verificacion", "ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente'"),
+            ("ine_frontal", "TEXT"),
+            ("ine_trasera", "TEXT"),
+            ("comprobante_domicilio", "TEXT"),
+            ("foto_selfie_ine", "TEXT")
+        ];
+
+        for (columna, tipo) in columnas_esperadas {
+            let query = format!(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'colaborador' AND COLUMN_NAME = '{}'",
+                columna
+            );
+            let existe: i64 = sqlx::query_scalar(&query).fetch_one(&self.pool).await.unwrap_or(0);
+            
+            if existe == 0 {
+                let alter = format!("ALTER TABLE colaborador ADD COLUMN {} {}", columna, tipo);
+                sqlx::query(&alter).execute(&self.pool).await?;
+                println!("🛠️  Columna '{}' annadida a la tabla colaborador.", columna);
+            }
+        }
 
         sqlx::query("CREATE TABLE IF NOT EXISTS portafolio_colaborador (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, foto_antes TEXT, foto_despues TEXT, descripcion TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
             .execute(&self.pool).await?;

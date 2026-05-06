@@ -1,4 +1,3 @@
-use finit::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use finit::aplicacion::servicios::registro_usuario::CasoUsoRegistroUsuario;
 use finit::aplicacion::servicios::login_usuario::CasoUsoLoginUsuario;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
@@ -13,7 +12,7 @@ async fn test_flujo_completo_identidad() {
     repositorio.inicializar_tablas().await.unwrap();
 
     let registro = CasoUsoRegistroUsuario::nuevo(repositorio.clone());
-    let login = CasoUsoLoginUsuario::nuevo(repositorio.clone());
+    let login = CasoUsoLoginUsuario::nuevo(repositorio.clone(), "test_secret".to_string());
 
     // 1. Registrar usuario
     let nombre = "Test User".to_string();

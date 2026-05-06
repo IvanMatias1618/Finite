@@ -27,4 +27,15 @@ impl RepositorioCategoria for RepositorioMySQL {
 
         Ok(registros)
     }
+
+    async fn buscar_subcategoria_por_id(&self, id: i32) -> Result<Option<Subcategoria>, Box<dyn Error + Send + Sync>> {
+        let registro = sqlx::query_as::<MySql, Subcategoria>(
+            "SELECT id, categoria_id, nombre, descripcion FROM subcategoria WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(registro)
+    }
 }

@@ -1,10 +1,8 @@
 use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use finit::infraestructura::sqlite_repositorio::RepositorioSQLite;
-use finit::dominio::solicitud::{SolicitudServicio, EstadoSolicitud};
 use finit::dominio::urgencia::Urgencia;
 use sqlx::SqlitePool;
 use std::sync::Arc;
-use rust_decimal::Decimal;
 
 #[tokio::test]
 async fn test_listar_solicitudes() {

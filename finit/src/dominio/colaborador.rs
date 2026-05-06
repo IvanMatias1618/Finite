@@ -73,3 +73,11 @@ pub struct PerfilColaborador {
     pub servicios: Vec<Servicio>,
     pub portafolio: Vec<TrabajoPortafolio>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResumenEstadisticasColaborador {
+    pub total_servicios: i32,
+    pub rating_promedio: Decimal,
+    pub ganancias_totales: Decimal,
+    pub servicios_pendientes: i32,
+}
