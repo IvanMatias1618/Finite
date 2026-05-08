@@ -43,6 +43,7 @@ impl CasoUsoLoginUsuario {
 
         let claims = Claims {
             sub: usuario.id.unwrap().to_string(),
+            rol: usuario.rol.clone(),
             exp: expiracion,
         };
 

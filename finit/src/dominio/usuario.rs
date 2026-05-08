@@ -6,4 +6,5 @@ pub struct Usuario {
     pub nombre: String,
     pub correo: String,
     pub contrasenna: String,
+    pub rol: String,
 }

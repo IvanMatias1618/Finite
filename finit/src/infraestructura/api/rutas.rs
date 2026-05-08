@@ -22,13 +22,16 @@ use crate::aplicacion::servicios::registrar_servicio_tecnico::CasoUsoRegistrarSe
 use crate::aplicacion::servicios::consultar_estadisticas_colaborador::CasoUsoConsultarEstadisticasColaborador;
 
 use super::middleware;
-use axum::middleware::from_fn_with_state;
+use axum::middleware::{from_fn_with_state, from_fn};
 
 use crate::aplicacion::servicios::gestionar_estado_solicitud::CasoUsoGestionarEstadoSolicitud;
 use crate::aplicacion::servicios::cotizar_servicio::CasoUsoCotizarServicio;
 use crate::aplicacion::servicios::gestionar_verificacion::CasoUsoGestionarVerificacion;
 
+use crate::infraestructura::RepositorioMySQL;
+
 pub struct EstadoApp {
+    pub repositorio: Arc<RepositorioMySQL>,
     pub registro_colaborador: Arc<CasoUsoRegistroColaborador>,
     pub registro_usuario: Arc<CasoUsoRegistroUsuario>,
     pub login_usuario: Arc<CasoUsoLoginUsuario>,
@@ -72,7 +75,11 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/solicitudes/:id/mensajes", get(manejadores::listar_mensajes))
         .route("/calificaciones", post(manejadores::calificar_servicio))
         .route("/cotizar", post(manejadores::cotizar_servicio))
-        .route("/admin/colaboradores/pendientes", get(manejadores::listar_colaboradores_pendientes))
+        .nest("/admin", Router::new()
+            .route("/colaboradores/pendientes", get(manejadores::listar_colaboradores_pendientes))
+            .route("/query", post(manejadores::ejecutar_consulta_sql))
+            .layer(from_fn(middleware::requiere_admin))
+        )
         .route("/colaboradores/:id/verificar", post(manejadores::procesar_verificacion))
         .layer(from_fn_with_state(estado.clone(), middleware::validar_jwt));
 

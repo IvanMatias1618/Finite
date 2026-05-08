@@ -130,6 +130,22 @@ pub async fn procesar_verificacion(
         Err(e) => Err(AppError(e.to_string())),
     }
 }
+
+#[derive(Deserialize)]
+pub struct DatosQuerySQL {
+    pub sql: String,
+}
+
+#[axum::debug_handler]
+pub async fn ejecutar_consulta_sql(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosQuerySQL>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    match estado.repositorio.ejecutar_query(&datos.sql).await {
+        Ok(resultado) => Ok(Json(resultado)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
 use crate::dominio::servicio::{Servicio, PrecioServicioUrgencia};
 use serde::Deserialize;
 use std::sync::Arc;

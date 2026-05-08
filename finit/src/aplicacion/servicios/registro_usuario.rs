@@ -32,6 +32,7 @@ impl CasoUsoRegistroUsuario {
             nombre,
             correo,
             contrasenna: hash,
+            rol: "usuario".to_string(),
         };
 
         let usuario_guardado = self.repositorio_usuario.guardar(usuario).await?;

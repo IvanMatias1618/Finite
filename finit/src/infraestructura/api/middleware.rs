@@ -46,10 +46,24 @@ pub async fn validar_jwt(
 
     match token_data {
         Ok(data) => {
-            // Insertar el ID del usuario en las extensiones de la solicitud para uso posterior
+            // Insertar los claims en las extensiones de la solicitud para uso posterior
             req.extensions_mut().insert(data.claims);
             Ok(next.run(req).await)
         }
         Err(_) => Err(StatusCode::UNAUTHORIZED),
     }
+}
+
+pub async fn requiere_admin(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let claims = req.extensions().get::<Claims>()
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    if claims.rol != "admin" {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
 }

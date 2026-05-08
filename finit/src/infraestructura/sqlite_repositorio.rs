@@ -32,7 +32,7 @@ impl RepositorioSQLite {
     }
 
     pub async fn inicializar_tablas(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, correo TEXT UNIQUE, contrasenna TEXT)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, correo TEXT UNIQUE, contrasenna TEXT, rol TEXT DEFAULT 'usuario')")
             .execute(&self.pool).await?;
         
         sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, telefono TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado INTEGER DEFAULT 0, estado_verificacion TEXT DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio TEXT DEFAULT '0.0', total_servicios INTEGER DEFAULT 0)")
@@ -44,6 +44,9 @@ impl RepositorioSQLite {
         let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN ine_trasera TEXT").execute(&self.pool).await;
         let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN comprobante_domicilio TEXT").execute(&self.pool).await;
         let _ = sqlx::query("ALTER TABLE colaborador ADD COLUMN foto_selfie_ine TEXT").execute(&self.pool).await;
+
+        // Migracion para usuario: añadir rol si no existe
+        let _ = sqlx::query("ALTER TABLE usuario ADD COLUMN rol TEXT DEFAULT 'usuario'").execute(&self.pool).await;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS portafolio_colaborador (id INTEGER PRIMARY KEY AUTOINCREMENT, colaborador_id INTEGER, foto_antes TEXT, foto_despues TEXT, descripcion TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
             .execute(&self.pool).await?;
@@ -99,15 +102,15 @@ impl RepositorioCategoria for RepositorioSQLite {
 #[async_trait]
 impl RepositorioUsuario for RepositorioSQLite {
     async fn guardar(&self, usuario: Usuario) -> Result<Usuario, Box<dyn Error + Send + Sync>> {
-        let resultado = sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna) VALUES (?, ?, ?)")
-            .bind(&usuario.nombre).bind(&usuario.correo).bind(&usuario.contrasenna).execute(&self.pool).await?;
+        let resultado = sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
+            .bind(&usuario.nombre).bind(&usuario.correo).bind(&usuario.contrasenna).bind(&usuario.rol).execute(&self.pool).await?;
         Ok(Usuario { id: Some(resultado.last_insert_rowid() as i32), ..usuario })
     }
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Usuario>, Box<dyn Error + Send + Sync>> {
-        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna FROM usuario WHERE id = ?").bind(id).fetch_optional(&self.pool).await?)
+        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna, rol FROM usuario WHERE id = ?").bind(id).fetch_optional(&self.pool).await?)
     }
     async fn buscar_por_correo(&self, correo: &str) -> Result<Option<Usuario>, Box<dyn Error + Send + Sync>> {
-        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna FROM usuario WHERE correo = ?").bind(correo).fetch_optional(&self.pool).await?)
+        Ok(sqlx::query_as::<_, Usuario>("SELECT id, nombre, correo, contrasenna, rol FROM usuario WHERE correo = ?").bind(correo).fetch_optional(&self.pool).await?)
     }
 }
 

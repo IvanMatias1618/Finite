@@ -24,7 +24,7 @@ impl RepositorioMySQL {
 
     pub async fn inicializar_tablas(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
         // 1. Crear Tablas base
-        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT, rol VARCHAR(50) DEFAULT 'usuario')")
             .execute(&self.pool).await?;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
@@ -35,7 +35,7 @@ impl RepositorioMySQL {
             .execute(&self.pool).await;
 
         // Migraciones manuales: Comprobar si las columnas existen antes de añadirlas
-        let columnas_esperadas = vec![
+        let columnas_esperadas_colaborador = vec![
             ("estado_verificacion", "ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente'"),
             ("ine_frontal", "TEXT"),
             ("ine_trasera", "TEXT"),
@@ -43,7 +43,7 @@ impl RepositorioMySQL {
             ("foto_selfie_ine", "TEXT")
         ];
 
-        for (columna, tipo) in columnas_esperadas {
+        for (columna, tipo) in columnas_esperadas_colaborador {
             let query = format!(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'colaborador' AND COLUMN_NAME = '{}'",
                 columna
@@ -55,6 +55,15 @@ impl RepositorioMySQL {
                 sqlx::query(&alter).execute(&self.pool).await?;
                 println!("🛠️  Columna '{}' annadida a la tabla colaborador.", columna);
             }
+        }
+
+        // Migracion para usuario: añadir rol si no existe
+        let existe_rol: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuario' AND COLUMN_NAME = 'rol'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        if existe_rol == 0 {
+            sqlx::query("ALTER TABLE usuario ADD COLUMN rol VARCHAR(50) DEFAULT 'usuario'")
+                .execute(&self.pool).await?;
+            println!("🛠️  Columna 'rol' annadida a la tabla usuario.");
         }
 
         sqlx::query("CREATE TABLE IF NOT EXISTS portafolio_colaborador (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, foto_antes TEXT, foto_despues TEXT, descripcion TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
@@ -120,6 +129,56 @@ impl RepositorioMySQL {
 
         println!("✅ Base de datos MySQL inicializada con datos semilla.");
         Ok(())
+    }
+
+    pub async fn ejecutar_query(&self, sql: &str) -> Result<serde_json::Value, Box<dyn Error + Send + Sync>> {
+        use sqlx::{Column, Row, TypeInfo, ValueRef};
+        
+        // Determinar si es una consulta SELECT o una operacion de modificacion
+        let sql_trimmed = sql.trim().to_uppercase();
+        if sql_trimmed.starts_with("SELECT") || sql_trimmed.starts_with("SHOW") || sql_trimmed.starts_with("DESCRIBE") {
+            let rows = sqlx::query(sql).fetch_all(&self.pool).await?;
+            let mut resultados = Vec::new();
+
+            for row in rows {
+                let mut objeto = serde_json::Map::new();
+                for column in row.columns() {
+                    let name = column.name();
+                    
+                    // Intento de mapeo de tipos básicos a JSON
+                    let value = if let Ok(v) = row.try_get::<String, _>(name) {
+                        serde_json::Value::String(v)
+                    } else if let Ok(v) = row.try_get::<i32, _>(name) {
+                        serde_json::Value::Number(v.into())
+                    } else if let Ok(v) = row.try_get::<i64, _>(name) {
+                        serde_json::Value::Number(v.into())
+                    } else if let Ok(v) = row.try_get::<f64, _>(name) {
+                        if let Some(n) = serde_json::Number::from_f64(v) {
+                            serde_json::Value::Number(n)
+                        } else {
+                            serde_json::Value::Null
+                        }
+                    } else if let Ok(v) = row.try_get::<bool, _>(name) {
+                        serde_json::Value::Bool(v)
+                    } else {
+                        // Para tipos mas complejos o nulos, devolvemos un string descriptivo o null
+                        match row.try_get_raw(name) {
+                            Ok(raw) if sqlx::ValueRef::is_null(&raw) => serde_json::Value::Null,
+                            _ => serde_json::Value::String(format!("<{:?}>", column.type_info()))
+                        }
+                    };
+                    objeto.insert(name.to_string(), value);
+                }
+                resultados.push(serde_json::Value::Object(objeto));
+            }
+            Ok(serde_json::Value::Array(resultados))
+        } else {
+            let result = sqlx::query(sql).execute(&self.pool).await?;
+            Ok(serde_json::json!({
+                "filas_afectadas": result.rows_affected(),
+                "ultimo_id_insertado": result.last_insert_id()
+            }))
+        }
     }
 }
 

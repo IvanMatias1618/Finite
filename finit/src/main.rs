@@ -141,6 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     ));
 
     let estado = Arc::new(EstadoApp {
+        repositorio: repositorio.clone(),
         registro_colaborador,
         registro_usuario,
         login_usuario,
