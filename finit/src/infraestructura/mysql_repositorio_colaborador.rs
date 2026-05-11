@@ -10,10 +10,12 @@ use rust_decimal::Decimal;
 impl RepositorioColaborador for RepositorioMySQL {
     async fn guardar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO colaborador (usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO colaborador (usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(colaborador.usuario_id)
         .bind(&colaborador.telefono)
+        .bind(&colaborador.telefono_verificacion)
+        .bind(&colaborador.zona_trabajo)
         .bind(&colaborador.sitio_web)
         .bind(&colaborador.foto_perfil)
         .bind(&colaborador.especialidad_resumen)
@@ -38,9 +40,11 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn actualizar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
         sqlx::query(
-            "UPDATE colaborador SET telefono = ?, sitio_web = ?, foto_perfil = ?, especialidad_resumen = ?, es_verificado = ?, estado_verificacion = ?, ine_frontal = ?, ine_trasera = ?, comprobante_domicilio = ?, foto_selfie_ine = ?, medio_transporte = ?, rating_promedio = ?, total_servicios = ? WHERE id = ?"
+            "UPDATE colaborador SET telefono = ?, telefono_verificacion = ?, zona_trabajo = ?, sitio_web = ?, foto_perfil = ?, especialidad_resumen = ?, es_verificado = ?, estado_verificacion = ?, ine_frontal = ?, ine_trasera = ?, comprobante_domicilio = ?, foto_selfie_ine = ?, medio_transporte = ?, rating_promedio = ?, total_servicios = ? WHERE id = ?"
         )
         .bind(&colaborador.telefono)
+        .bind(&colaborador.telefono_verificacion)
+        .bind(&colaborador.zona_trabajo)
         .bind(&colaborador.sitio_web)
         .bind(&colaborador.foto_perfil)
         .bind(&colaborador.especialidad_resumen)
@@ -62,7 +66,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Colaborador>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query(
-            "SELECT id, usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
+            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -74,6 +78,8 @@ impl RepositorioColaborador for RepositorioMySQL {
                 id: Some(row.get::<i32, _>("id")),
                 usuario_id: row.get::<i32, _>("usuario_id"),
                 telefono: row.get::<String, _>("telefono"),
+                telefono_verificacion: row.get::<Option<String>, _>("telefono_verificacion"),
+                zona_trabajo: row.get::<Option<String>, _>("zona_trabajo"),
                 sitio_web: row.get::<Option<String>, _>("sitio_web"),
                 foto_perfil: row.get::<Option<String>, _>("foto_perfil"),
                 especialidad_resumen: row.get::<Option<String>, _>("especialidad_resumen"),
@@ -171,7 +177,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn listar_todos(&self) -> Result<Vec<Colaborador>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query(
-            "SELECT id, usuario_id, telefono, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador"
+            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -183,6 +189,8 @@ impl RepositorioColaborador for RepositorioMySQL {
                 id: Some(row.get::<i32, _>("id")),
                 usuario_id: row.get::<i32, _>("usuario_id"),
                 telefono: row.get::<String, _>("telefono"),
+                telefono_verificacion: row.get::<Option<String>, _>("telefono_verificacion"),
+                zona_trabajo: row.get::<Option<String>, _>("zona_trabajo"),
                 sitio_web: row.get::<Option<String>, _>("sitio_web"),
                 foto_perfil: row.get::<Option<String>, _>("foto_perfil"),
                 especialidad_resumen: row.get::<Option<String>, _>("especialidad_resumen"),

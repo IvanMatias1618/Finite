@@ -10,7 +10,9 @@ pub mod mysql_repositorio_mensaje;
 pub mod mysql_repositorio_disponibilidad;
 pub mod mysql_repositorio_configuracion_precio;
 pub mod mysql_repositorio_resennia;
+pub mod mysql_repositorio_cotizacion_especial;
 pub mod sqlite_repositorio;
+pub mod social;
 pub mod api;
 
 pub struct RepositorioMySQL {
@@ -27,7 +29,7 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT, rol VARCHAR(50) DEFAULT 'usuario')")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, telefono_verificacion TEXT, zona_trabajo TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
             .execute(&self.pool).await?;
 
         // Asegurar que estado_verificacion sea ENUM si ya existia como TEXT/VARCHAR
@@ -40,7 +42,9 @@ impl RepositorioMySQL {
             ("ine_frontal", "TEXT"),
             ("ine_trasera", "TEXT"),
             ("comprobante_domicilio", "TEXT"),
-            ("foto_selfie_ine", "TEXT")
+            ("foto_selfie_ine", "TEXT"),
+            ("telefono_verificacion", "TEXT"),
+            ("zona_trabajo", "TEXT")
         ];
 
         for (columna, tipo) in columnas_esperadas_colaborador {
@@ -92,6 +96,21 @@ impl RepositorioMySQL {
 
         sqlx::query("CREATE TABLE IF NOT EXISTS mensaje_solicitud (id INT PRIMARY KEY AUTO_INCREMENT, solicitud_id INT, emisor_id INT, contenido TEXT, fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
             .execute(&self.pool).await?;
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS resennia (id INT PRIMARY KEY AUTO_INCREMENT, solicitud_id INT, calificacion TINYINT, aspectos TEXT, comentario TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
+            .execute(&self.pool).await?;
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS cotizacion_especial (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, descripcion_trabajo TEXT, fotos_evidencia TEXT, presupuesto_estimado DECIMAL(10,2), nivel_urgencia VARCHAR(50), fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (usuario_id) REFERENCES usuario(id))")
+            .execute(&self.pool).await?;
+
+        // Migracion para resennia: añadir aspectos si no existe
+        let existe_aspectos: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'resennia' AND COLUMN_NAME = 'aspectos'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        if existe_aspectos == 0 {
+            sqlx::query("ALTER TABLE resennia ADD COLUMN aspectos TEXT")
+                .execute(&self.pool).await?;
+            println!("🛠️  Columna 'aspectos' annadida a la tabla resennia.");
+        }
 
         // 2. Insertar Datos Semilla (Categorias 1-4)
         let categorias = vec![

@@ -19,3 +19,5 @@ pub mod consultar_estadisticas_colaborador;
 pub mod gestionar_estado_solicitud;
 pub mod cotizar_servicio;
 pub mod gestionar_verificacion;
+pub mod cotizacion_especial;
+pub mod login_social;

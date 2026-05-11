@@ -25,6 +25,7 @@ impl CasoUsoCalificarServicio {
         &self,
         solicitud_id: i32,
         calificacion: i8,
+        aspectos: Option<String>,
         comentario: Option<String>,
     ) -> Result<Resennia, Box<dyn Error + Send + Sync>> {
         // 1. Verificar que la solicitud exista y esté terminada
@@ -45,6 +46,7 @@ impl CasoUsoCalificarServicio {
             id: None,
             solicitud_id,
             calificacion,
+            aspectos,
             comentario,
             fecha_creacion: None,
         };

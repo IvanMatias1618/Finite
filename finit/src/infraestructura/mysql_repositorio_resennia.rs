@@ -9,10 +9,11 @@ use sqlx::MySql;
 impl RepositorioResennia for RepositorioMySQL {
     async fn guardar(&self, resennia: Resennia) -> Result<Resennia, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO resennia (solicitud_id, calificacion, comentario) VALUES (?, ?, ?)"
+            "INSERT INTO resennia (solicitud_id, calificacion, aspectos, comentario) VALUES (?, ?, ?, ?)"
         )
         .bind(resennia.solicitud_id)
         .bind(resennia.calificacion)
+        .bind(&resennia.aspectos)
         .bind(&resennia.comentario)
         .execute(&self.pool)
         .await?;
@@ -26,7 +27,7 @@ impl RepositorioResennia for RepositorioMySQL {
 
     async fn buscar_por_solicitud(&self, solicitud_id: i32) -> Result<Option<Resennia>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, Resennia>(
-            "SELECT id, solicitud_id, calificacion, comentario, fecha_creacion FROM resennia WHERE solicitud_id = ?"
+            "SELECT id, solicitud_id, calificacion, aspectos, comentario, fecha_creacion FROM resennia WHERE solicitud_id = ?"
         )
         .bind(solicitud_id)
         .fetch_optional(&self.pool)

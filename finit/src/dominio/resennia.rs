@@ -6,6 +6,7 @@ pub struct Resennia {
     pub id: Option<i32>,
     pub solicitud_id: i32,
     pub calificacion: i8,
+    pub aspectos: Option<String>,
     pub comentario: Option<String>,
     pub fecha_creacion: Option<DateTime<Utc>>,
 }

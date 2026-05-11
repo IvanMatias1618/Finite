@@ -34,7 +34,10 @@ impl CasoUsoRegistroColaborador {
     pub async fn ejecutar(
         &self,
         token_usuario: String,
+        nombre_completo: String,
         telefono: String,
+        telefono_verificacion: Option<String>,
+        zona_trabajo: Option<String>,
         sitio_web: Option<String>,
         servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
     ) -> Result<i32, Box<dyn Error + Send + Sync>> {
@@ -48,14 +51,22 @@ impl CasoUsoRegistroColaborador {
         let usuario_id = token_data.claims.sub.parse::<i32>()?;
 
         // Validar que el usuario existe
-        let usuario = self.repositorio_usuario.buscar_por_id(usuario_id).await?
+        let mut usuario = self.repositorio_usuario.buscar_por_id(usuario_id).await?
             .ok_or("Usuario no encontrado")?;
+
+        // Actualizar el nombre del usuario si es necesario
+        if usuario.nombre != nombre_completo {
+            usuario.nombre = nombre_completo;
+            self.repositorio_usuario.actualizar(usuario).await?;
+        }
 
         // Crear colaborador
         let colaborador = self.repositorio_colaborador.guardar(Colaborador {
             id: None,
-            usuario_id: usuario.id.unwrap(),
+            usuario_id,
             telefono,
+            telefono_verificacion,
+            zona_trabajo,
             sitio_web,
             foto_perfil: None,
             especialidad_resumen: None,

@@ -20,6 +20,10 @@ use finit::aplicacion::servicios::consultar_estadisticas_colaborador::CasoUsoCon
 use finit::aplicacion::servicios::gestionar_estado_solicitud::CasoUsoGestionarEstadoSolicitud;
 use finit::aplicacion::servicios::cotizar_servicio::CasoUsoCotizarServicio;
 use finit::aplicacion::servicios::gestionar_verificacion::CasoUsoGestionarVerificacion;
+use finit::aplicacion::servicios::cotizacion_especial::CasoUsoCotizacionEspecial;
+use finit::aplicacion::servicios::login_social::CasoUsoLoginSocial;
+use finit::infraestructura::social::google::GoogleProvider;
+use finit::infraestructura::social::facebook::FacebookProvider;
 use finit::infraestructura::RepositorioMySQL;
 use finit::infraestructura::api::rutas as ax_routing;
 use finit::infraestructura::api::rutas::EstadoApp;
@@ -57,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let login_usuario = Arc::new(CasoUsoLoginUsuario::nuevo(
         repositorio.clone(),
-        jwt_secret,
+        jwt_secret.clone(),
     ));
 
     let listar_categorias = Arc::new(CasoUsoListarCategorias::nuevo(
@@ -140,6 +144,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let cotizacion_especial = Arc::new(CasoUsoCotizacionEspecial::nuevo(
+        repositorio.clone(),
+    ));
+
+    let proveedor_google = Arc::new(GoogleProvider);
+    let proveedor_facebook = Arc::new(FacebookProvider);
+
+    let login_social = Arc::new(CasoUsoLoginSocial::nuevo(
+        repositorio.clone(),
+        proveedor_google,
+        proveedor_facebook,
+        jwt_secret.clone(),
+    ));
+
     let estado = Arc::new(EstadoApp {
         repositorio: repositorio.clone(),
         registro_colaborador,
@@ -163,6 +181,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         gestionar_estado_solicitud,
         cotizar_servicio,
         gestionar_verificacion,
+        cotizacion_especial,
+        login_social,
     });
 
     // Configurar Rutas

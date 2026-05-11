@@ -376,7 +376,10 @@ pub async fn listar_solicitudes(
 #[derive(Deserialize)]
 pub struct DatosRegistro {
     pub token_usuario: String,
+    pub nombre_completo: String,
     pub telefono: String,
+    pub telefono_verificacion: Option<String>,
+    pub zona_trabajo: Option<String>,
     pub sitio_web: Option<String>,
     pub servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
 }
@@ -387,7 +390,15 @@ pub async fn registrar_colaborador(
     Json(datos): Json<DatosRegistro>,
 ) -> Result<Json<i32>, AppError> {
     match estado.registro_colaborador
-        .ejecutar(datos.token_usuario, datos.telefono, datos.sitio_web, datos.servicios)
+        .ejecutar(
+            datos.token_usuario,
+            datos.nombre_completo,
+            datos.telefono,
+            datos.telefono_verificacion,
+            datos.zona_trabajo,
+            datos.sitio_web,
+            datos.servicios
+        )
         .await
     {
         Ok(id) => Ok(Json(id)),
@@ -459,6 +470,7 @@ pub async fn configurar_horarios(
 pub struct DatosCalificacion {
     pub solicitud_id: i32,
     pub calificacion: i8,
+    pub aspectos: Option<Vec<String>>,
     pub comentario: Option<String>,
 }
 
@@ -539,8 +551,66 @@ pub async fn calificar_servicio(
     State(estado): State<Arc<EstadoApp>>,
     Json(datos): Json<DatosCalificacion>,
 ) -> Result<Json<Resennia>, AppError> {
-    match estado.calificar_servicio.ejecutar(datos.solicitud_id, datos.calificacion, datos.comentario).await {
+    let aspectos_json = datos.aspectos.map(|v| serde_json::to_string(&v).unwrap_or_default());
+    match estado.calificar_servicio.ejecutar(datos.solicitud_id, datos.calificacion, aspectos_json, datos.comentario).await {
         Ok(resennia) => Ok(Json(resennia)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+use crate::dominio::cotizacion_especial::CotizacionEspecial;
+
+#[derive(Deserialize)]
+pub struct DatosCotizacionEspecial {
+    pub usuario_id: i32,
+    pub descripcion_trabajo: String,
+    pub fotos_evidencia: Option<Vec<String>>,
+    pub presupuesto_estimado: Option<Decimal>,
+    pub nivel_urgencia: Urgencia,
+}
+
+#[axum::debug_handler]
+pub async fn solicitar_cotizacion_especial(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosCotizacionEspecial>,
+) -> Result<Json<CotizacionEspecial>, AppError> {
+    let fotos_json = datos.fotos_evidencia.map(|v| serde_json::to_string(&v).unwrap_or_default());
+    match estado.cotizacion_especial.ejecutar(
+        datos.usuario_id,
+        datos.descripcion_trabajo,
+        fotos_json,
+        datos.presupuesto_estimado,
+        datos.nivel_urgencia
+    ).await {
+        Ok(cotizacion) => Ok(Json(cotizacion)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DatosLoginSocial {
+    pub token_social: String,
+    pub rol_solicitado: String,
+}
+
+#[axum::debug_handler]
+pub async fn login_google(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosLoginSocial>,
+) -> Result<Json<String>, AppError> {
+    match estado.login_social.ejecutar("google".to_string(), datos.token_social, datos.rol_solicitado).await {
+        Ok(token) => Ok(Json(token)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[axum::debug_handler]
+pub async fn login_facebook(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosLoginSocial>,
+) -> Result<Json<String>, AppError> {
+    match estado.login_social.ejecutar("facebook".to_string(), datos.token_social, datos.rol_solicitado).await {
+        Ok(token) => Ok(Json(token)),
         Err(e) => Err(AppError(e.to_string())),
     }
 }

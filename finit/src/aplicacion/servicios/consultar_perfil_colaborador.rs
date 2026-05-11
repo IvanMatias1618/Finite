@@ -42,6 +42,7 @@ impl CasoUsoConsultarPerfilColaborador {
             id: colaborador.id.unwrap_or(colaborador_id),
             nombre: usuario.nombre,
             telefono: colaborador.telefono,
+            zona_trabajo: colaborador.zona_trabajo,
             sitio_web: colaborador.sitio_web,
             foto_perfil: colaborador.foto_perfil,
             especialidad_resumen: colaborador.especialidad_resumen,

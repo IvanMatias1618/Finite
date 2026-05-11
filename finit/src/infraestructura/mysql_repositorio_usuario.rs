@@ -25,6 +25,21 @@ impl RepositorioUsuario for RepositorioMySQL {
         })
     }
 
+    async fn actualizar(&self, usuario: Usuario) -> Result<Usuario, Box<dyn Error + Send + Sync>> {
+        sqlx::query(
+            "UPDATE usuario SET nombre = ?, correo = ?, contrasenna = ?, rol = ? WHERE id = ?"
+        )
+        .bind(&usuario.nombre)
+        .bind(&usuario.correo)
+        .bind(&usuario.contrasenna)
+        .bind(&usuario.rol)
+        .bind(usuario.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(usuario)
+    }
+
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Usuario>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, Usuario>(
             "SELECT id, nombre, correo, contrasenna, rol FROM usuario WHERE id = ?"

@@ -27,6 +27,8 @@ use axum::middleware::{from_fn_with_state, from_fn};
 use crate::aplicacion::servicios::gestionar_estado_solicitud::CasoUsoGestionarEstadoSolicitud;
 use crate::aplicacion::servicios::cotizar_servicio::CasoUsoCotizarServicio;
 use crate::aplicacion::servicios::gestionar_verificacion::CasoUsoGestionarVerificacion;
+use crate::aplicacion::servicios::cotizacion_especial::CasoUsoCotizacionEspecial;
+use crate::aplicacion::servicios::login_social::CasoUsoLoginSocial;
 
 use crate::infraestructura::RepositorioMySQL;
 
@@ -53,6 +55,8 @@ pub struct EstadoApp {
     pub gestionar_estado_solicitud: Arc<CasoUsoGestionarEstadoSolicitud>,
     pub cotizar_servicio: Arc<CasoUsoCotizarServicio>,
     pub gestionar_verificacion: Arc<CasoUsoGestionarVerificacion>,
+    pub cotizacion_especial: Arc<CasoUsoCotizacionEspecial>,
+    pub login_social: Arc<CasoUsoLoginSocial>,
 }
 
 use tower_http::services::ServeDir;
@@ -75,6 +79,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/solicitudes/:id/mensajes", get(manejadores::listar_mensajes))
         .route("/calificaciones", post(manejadores::calificar_servicio))
         .route("/cotizar", post(manejadores::cotizar_servicio))
+        .route("/cotizaciones-especiales", post(manejadores::solicitar_cotizacion_especial))
         .nest("/admin", Router::new()
             .route("/colaboradores/pendientes", get(manejadores::listar_colaboradores_pendientes))
             .route("/query", post(manejadores::ejecutar_consulta_sql))
@@ -89,6 +94,8 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/subidas", post(manejadores::subir_archivo))
         .route("/usuarios", post(manejadores::registrar_usuario))
         .route("/login", post(manejadores::login_usuario))
+        .route("/auth/google", post(manejadores::login_google))
+        .route("/auth/facebook", post(manejadores::login_facebook))
         .route("/categorias", get(manejadores::listar_categorias))
         .route("/categorias/:id/subcategorias", get(manejadores::listar_subcategorias))
         .route("/subcategorias/:id", get(manejadores::consultar_subcategoria))
