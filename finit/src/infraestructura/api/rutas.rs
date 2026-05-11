@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use axum::{routing::{get, post}, Router};
+use axum::extract::DefaultBodyLimit;
 use crate::aplicacion::servicios::registro_colaborador::CasoUsoRegistroColaborador;
 use crate::aplicacion::servicios::registro_usuario::CasoUsoRegistroUsuario;
 use crate::aplicacion::servicios::login_usuario::CasoUsoLoginUsuario;
@@ -103,5 +104,6 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/colaboradores/:id", get(manejadores::consultar_perfil_colaborador))
         .route("/colaboradores/:id/estadisticas", get(manejadores::consultar_estadisticas_colaborador))
         .merge(rutas_protegidas)
+        .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // Limite de 20MB para subida de documentos base64
         .with_state(estado)
 }

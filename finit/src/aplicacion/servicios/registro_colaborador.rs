@@ -54,9 +54,19 @@ impl CasoUsoRegistroColaborador {
         let mut usuario = self.repositorio_usuario.buscar_por_id(usuario_id).await?
             .ok_or("Usuario no encontrado")?;
 
-        // Actualizar el nombre del usuario si es necesario
+        // Actualizar el nombre y el rol del usuario
+        let mut usuario_actualizado = false;
         if usuario.nombre != nombre_completo {
             usuario.nombre = nombre_completo;
+            usuario_actualizado = true;
+        }
+        
+        if usuario.rol != "colaborador" {
+            usuario.rol = "colaborador".to_string();
+            usuario_actualizado = true;
+        }
+
+        if usuario_actualizado {
             self.repositorio_usuario.actualizar(usuario).await?;
         }
 

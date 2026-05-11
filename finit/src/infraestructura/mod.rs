@@ -29,20 +29,27 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT, rol VARCHAR(50) DEFAULT 'usuario')")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, telefono_verificacion TEXT, zona_trabajo TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal TEXT, ine_trasera TEXT, comprobante_domicilio TEXT, foto_selfie_ine TEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, telefono_verificacion TEXT, zona_trabajo TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal LONGTEXT, ine_trasera LONGTEXT, comprobante_domicilio LONGTEXT, foto_selfie_ine LONGTEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
             .execute(&self.pool).await?;
 
         // Asegurar que estado_verificacion sea ENUM si ya existia como TEXT/VARCHAR
         let _ = sqlx::query("ALTER TABLE colaborador MODIFY COLUMN estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente'")
             .execute(&self.pool).await;
 
+        // Asegurar que las columnas de documentos sean LONGTEXT si ya existen
+        let columnas_documentos = vec!["ine_frontal", "ine_trasera", "comprobante_domicilio", "foto_selfie_ine"];
+        for col in columnas_documentos {
+            let _ = sqlx::query(&format!("ALTER TABLE colaborador MODIFY COLUMN {} LONGTEXT", col))
+                .execute(&self.pool).await;
+        }
+
         // Migraciones manuales: Comprobar si las columnas existen antes de añadirlas
         let columnas_esperadas_colaborador = vec![
             ("estado_verificacion", "ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente'"),
-            ("ine_frontal", "TEXT"),
-            ("ine_trasera", "TEXT"),
-            ("comprobante_domicilio", "TEXT"),
-            ("foto_selfie_ine", "TEXT"),
+            ("ine_frontal", "LONGTEXT"),
+            ("ine_trasera", "LONGTEXT"),
+            ("comprobante_domicilio", "LONGTEXT"),
+            ("foto_selfie_ine", "LONGTEXT"),
             ("telefono_verificacion", "TEXT"),
             ("zona_trabajo", "TEXT")
         ];
