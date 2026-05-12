@@ -13,26 +13,32 @@ Este documento recopila configuraciones específicas, dependencias y detalles de
   - `rust_decimal`: Usado para el manejo de tipos monetarios y coordenadas sin pérdida de precisión.
 - **`rust_decimal`**: Configurado con la feature `serde-float`.
 - **`async-trait`**: Para compatibilidad `dyn` en traits de repositorios.
+- **`dotenvy`**: Utilizado en `main.rs` para cargar variables de entorno desde `.env`.
 
 ### `docker-compose.yml` (Entorno de Datos)
-- **Imagen**: `mysql:8.0`. Fundamental para funciones geoespaciales.
+- **Imagen**: `mysql:8.0`. Fundamental para funciones geoespaciales y escalabilidad.
 
 ## Carpeta: `infraestructura/`
 
-### `sqlite_repositorio.rs` (Capa de Respaldo)
-- Se utiliza `SqlitePool` para gestionar conexiones en memoria.
-- Implementa los mismos traits de dominio, permitiendo la inyección de dependencias en `main.rs`.
-- `inicializar_tablas()` crea el esquema dinámicamente al arrancar.
+### `sqlite_repositorio.rs` (Capa de Pruebas)
+- Se utiliza `SqlitePool` para gestionar conexiones en memoria (`sqlite::memory:`).
+- Implementa **todos** los traits de dominio (`RepositorioColaborador`, `RepositorioResennia`, etc.).
+- Permite que `cargo test` sea determinista y veloz.
 
 ### `esquema.sql` (Base de Datos)
-- **Tipos ENUM**: Se utilizan `ENUM` nativos en MySQL. En SQLite, estos se mapean como TEXT con validación en la capa de aplicación.
+- **Tipos ENUM**: Se utilizan `VARCHAR(50)` o similares en MySQL para representar estados.
+- **Decimales**: Se usa `DECIMAL(10,2)` para precios y `DECIMAL(10,7)` para coordenadas.
 
 ## Carpeta: `src/dominio/`
 
 ### `urgencia.rs` y `solicitud.rs`
-- **Mapeo Serde**: Se utiliza `#[serde(rename_all = "lowercase")]` para que la API sea amigable con el frontend, permitiendo enviar valores en minúsculas (ej: "baja", "alta").
+- **Mapeo Serde**: Se utiliza `#[serde(rename_all = "lowercase")]` para que la API sea amigable con el frontend.
+- **PartialEq**: Implementado en `EstadoSolicitud` para lógica de validación en la capa de aplicación.
 
 ## Carpeta: `src/aplicacion/`
 
 ### `solicitud_servicio.rs` (Constantes Físicas)
 - **Radio de la Tierra**: Se utiliza la constante `6371.0` km para el cálculo de Haversine.
+
+### Inyección de Dependencias
+- Los constructores `nuevo()` de los servicios aceptan `Arc<dyn Trait>`, permitiendo desacoplamiento total de la base de datos elegida.

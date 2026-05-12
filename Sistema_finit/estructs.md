@@ -7,46 +7,58 @@ Este documento describe la organización de archivos, carpetas y estructuras del
 - `infraestructura/`: Contiene archivos externos al código Rust que definen el entorno.
   - `esquema.sql`: Definición de la base de datos MySQL (Tablas, ENUMs, Relaciones).
 - `src/`: Raíz del código fuente.
-  - `main.rs`: Punto de entrada de la aplicación. Configura la base de datos y el servidor web.
+  - `main.rs`: Punto de entrada de la aplicación. Configura la base de datos (MySQL), carga el `JWT_SECRET` y arranca el servidor Axum.
   - `dominio/`: El núcleo del negocio. No tiene dependencias externas.
-    - `usuario.rs`: Estructura `Usuario`. Representa tanto a clientes como a colaboradores.
-    - `colaborador.rs`: Estructuras `Colaborador`, `PerfilColaborador` y `TrabajoPortafolio`. Datos profesionales, verificación y evidencias de trabajos anteriores (antes/después).
-    - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`. Clasificación jerárquica de los servicios (Lazy Load).
-    - `servicio.rs`: Estructura `Servicio`. Define qué se ofrece, ubicación y cobertura.
-    - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud`. Ciclo de vida con estados Pro (`PendienteDeRevision`, `AceptadoPorColaborador`, `CitaProgramada`) y soporte para fotos de evidencia inicial.
-    - `mensaje.rs`: Estructura `MensajeSolicitud`. Representa un mensaje dentro del chat de una solicitud.
-    - `urgencia.rs`: ENUM `Urgencia`. Define los niveles de prioridad del servicio.
-    - `puertos/`: **Interfaces (Traits)**. Definen qué puede hacer el sistema sin decir cómo.
-      - `repositorio_usuario.rs`: Trait `RepositorioUsuario`.
-      - `repositorio_colaborador.rs`: Trait `RepositorioColaborador`.
-      - `repositorio_servicio.rs`: Trait `RepositorioServicio`.
-      - `repositorio_solicitud.rs`: Trait `RepositorioSolicitud`.
-      - `repositorio_mensaje.rs`: Trait `RepositorioMensaje`.
+    - `usuario.rs`: Estructura `Usuario`.
+    - `colaborador.rs`: Estructuras `Colaborador`, `PerfilColaborador`, `TrabajoPortafolio`, `EstadoVerificacion` y `ResumenEstadisticasColaborador`.
+    - `disponibilidad.rs`: Estructuras `Disponibilidad` y `HorarioSemanal`.
+    - `configuracion_precio.rs`: Estructura `ConfiguracionPrecio`.
+    - `categoria.rs`: Estructuras `Categoria` y `Subcategoria`.
+    - `servicio.rs`: Estructura `Servicio` y `PrecioServicioUrgencia`.
+    - `solicitud.rs`: Estructura `SolicitudServicio` y `EstadoSolicitud` (Deriva `PartialEq`).
+    - `mensaje.rs`: Estructura `MensajeSolicitud`.
+    - `resennia.rs`: Estructura `Resennia`.
+    - `urgencia.rs`: ENUM `Urgencia`.
+    - `puertos/`: **Interfaces (Traits)**.
+      - `repositorio_usuario.rs`
+      - `repositorio_colaborador.rs`: Incluye `eliminar_trabajo_portafolio` y `obtener_estadisticas`.
+      - `repositorio_servicio.rs`
+      - `repositorio_solicitud.rs`
+      - `repositorio_mensaje.rs`
+      - `repositorio_disponibilidad.rs`
+      - `repositorio_configuracion_precio.rs`
+      - `repositorio_resennia.rs`
   - `aplicacion/`: Orquestación del negocio. Implementa los "Casos de Uso".
-    - `servicios/`: Lógica de procesos complejos.
-      - `registro_colaborador.rs`: Lógica para convertir un usuario en colaborador con sus servicios.
-      - `consultar_perfil_colaborador.rs`: Lógica para obtener el perfil Pro de un colaborador con servicios y portafolio.
-      - `listar_colaboradores_marketplace.rs`: Lógica para buscar y filtrar profesionales cercanos.
-      - `solicitud_servicio.rs`: Creación de solicitudes con evidencia y cálculo de precios geolocalizados.
-      - `gestionar_mensajes.rs`: Lógica de chat (enviar y listar mensajes) vinculado a solicitudes.
-  - `infraestructura/`: Implementación de detalles técnicos y dependencias externas.
-    - `mod.rs`: Definición de la estructura `RepositorioMySQL`.
-    - `mysql_repositorio_*.rs`: Implementaciones concretas para producción.
-    - `sqlite_repositorio.rs`: Implementación de respaldo para pruebas locales rápidas sin base de datos externa.
-    - `api/`: Exposición del sistema mediante protocolo HTTP.
-      - `rutas.rs`: Definición de endpoints y estructura `EstadoApp` para inyección de dependencias.
-      - `manejadores.rs`: Lógica de entrada/salida para las peticiones HTTP (Axum).
-- `tests/`: Pruebas de integración y validación del sistema.
-  - `colaborador_test.rs`: Suite de pruebas para el perfil del colaborador.
-  - `navegacion_test.rs`: Suite de pruebas para categorias y subcategorias.
+    - `servicios/`:
+      - `registro_colaborador.rs`: Registro con validación de JWT.
+      - `actualizar_documentacion.rs`
+      - `configurar_precios_dinamicos.rs`
+      - `configurar_horarios.rs`
+      - `calificar_servicio.rs`: Validación de estado `Terminado` y unicidad.
+      - `consultar_perfil_colaborador.rs`
+      - `consultar_estadisticas_colaborador.rs`: Dashboard del técnico.
+      - `registrar_servicio_tecnico.rs`: Adición de servicios individuales.
+      - `gestionar_portafolio.rs`: Alta y baja de trabajos realizados.
+      - `listar_colaboradores_marketplace.rs`
+      - `solicitud_servicio.rs`: Cálculo de precio final (Base + Distancia).
+      - `gestionar_mensajes.rs`
+  - `infraestructura/`: Implementación de detalles técnicos.
+    - `mod.rs`: Estructura `RepositorioMySQL`.
+    - `mysql_repositorio_*.rs`: Implementaciones para producción.
+    - `sqlite_repositorio.rs`: **Repositorio de Pruebas**. Implementación completa de todos los puertos para ejecución de tests en memoria.
+    - `api/`:
+      - `rutas.rs`: Rutas unificadas y `EstadoApp`.
+      - `manejadores.rs`: Handlers de Axum con deserialización segura.
+- `tests/`: Pruebas de integración.
+  - `colaborador_test.rs`, `identidad_test.rs`, `marketplace_test.rs`, `navegacion_test.rs`, `solicitud_test.rs`.
 
 ## Estructuras y Parámetros Clave
 
 ### Entidades de Dominio
-- **Servicio**: Incluye `latitud`, `longitud`, `subcategoria_id` y `distancia_maxima_kilometros`. Se decidió colocar las coordenadas en el servicio para permitir que un mismo colaborador ofrezca servicios en puntos geográficos distintos (ej. dos locales comerciales).
-- **SolicitudServicio**: Incluye `precio_final` calculado en tiempo de emparejamiento.
+- **Colaborador**: Incluye campos de documentación (`ine_frontal`, `ine_trasera`, `comprobante_domicilio`, `foto_selfie_ine`) almacenados como `LONGTEXT` para soportar Base64.
+- **EstadoSolicitud**: Ahora implementa `PartialEq` para permitir validaciones lógicas en la capa de aplicación.
+- **ResumenEstadisticasColaborador**: Agrupa `total_servicios`, `rating_promedio`, `ganancias_totales` y `servicios_pendientes`.
 
 ### Justificación de Diseño
-- **Inversión de Dependencias**: La capa de `aplicacion` depende de `puertos` (traits), no de la implementación de MySQL. Esto permite cambiar la base de datos sin tocar la lógica del negocio.
-- **Ubicación Geográfica**: Se utiliza el tipo `Decimal` para precisión financiera y de coordenadas, convirtiéndose a `f64` solo para cálculos trigonométricos (Haversine).
-- **Matching Dinámico**: No se asigna un colaborador fijo de inmediato en el esquema si no que se busca el "mejor" según distancia y precio de urgencia en el momento de la solicitud.
+- **Inyección de Secretos**: El `jwt_secret` se inyecta en los casos de uso que lo requieren desde `main.rs`, permitiendo una rotación segura de llaves sin cambiar la lógica.
+- **Dualidad de Repositorios**: Se mantiene `sqlite_repositorio.rs` para garantizar que la suite de pruebas sea rápida, aislada y no requiera un servidor MySQL activo, mientras que `mysql_repositorio_*.rs` se usa para la operación real.

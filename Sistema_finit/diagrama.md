@@ -39,10 +39,10 @@ graph TD
 
 | Componente | Rol Genérico | Estado Actual |
 | :--- | :--- | :--- |
-| **Repositorio** | Adaptador para cualquier motor SQL | Implementado en SQLite |
-| **Matching Strategy** | Lógica para elegir al mejor colaborador | Hardcodeado (Precio) |
-| **Categorización** | Árbol jerárquico de servicios | Implementado (Lazy Load) |
-| **Identidad** | Gestión de Roles (User -> Pro) | Implementado (JWT + Bcrypt) |
+| **Repositorio** | Adaptador para cualquier motor SQL | MySQL (Producción) / SQLite (Tests) |
+| **Matching Strategy** | Lógica para elegir al mejor colaborador | Implementado (Precio + Distancia) |
+| **Categorización** | Árbol jerárquico de servicios | Semilla cargada (Cerrajeria, Plomeria, etc) |
+| **Panel Técnico** | Estadísticas y Portafolio | Implementado (Fase 4 completada) |
 
 ## Plano Visual (ASCII)
 

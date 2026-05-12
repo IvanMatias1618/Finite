@@ -5,60 +5,57 @@ Este documento detalla las funciones principales del sistema, agrupadas por su r
 ## Capa de Aplicación (Casos de Uso)
 
 ### Registro de Usuario (`CasoUsoRegistroUsuario`)
-- **`ejecutar`**:
-  - **Parámetros**: `nombre`, `correo`, `contrasenna`.
-  - **Lógica**: Valida unicidad del correo y persiste el nuevo usuario.
+- **`ejecutar`**: Valida unicidad de correo y aplica hash a la contrasenna (bcrypt).
 
 ### Registro de Colaborador (`CasoUsoRegistroColaborador`)
-- **`ejecutar`**:
-  - **Parámetros**: `token_usuario`, `telefono`, `sitio_web`, `servicios`.
-  - **Lógica**: Valida al usuario y crea el perfil de colaborador con sus servicios asociados (vinculados a subcategorias).
+- **`ejecutar`**: Decodifica el `token_usuario` usando el `jwt_secret` para identificar al usuario, crea el perfil Pro y registra los servicios iniciales.
 
-### Consultar Perfil de Colaborador (`CasoUsoConsultarPerfilColaborador`)
-- **`ejecutar`**:
-  - **Parámetros**: `colaborador_id`.
-  - **Lógica**: Obtiene los datos del colaborador (incluyendo foto, especialidad y estado de verificación), el nombre del usuario, la lista de servicios y el portafolio de trabajos realizados.
+### Gestión de Portafolio (`CasoUsoGestionarPortafolio`)
+- **`annadir_trabajo`**: Registra fotos "antes/después" y descripción de un trabajo realizado.
+- **`eliminar_trabajo`**: Elimina un registro del portafolio por su ID.
+
+### Registrar Servicio Técnico (`CasoUsoRegistrarServicioTecnico`)
+- **`ejecutar`**: Permite al colaborador añadir nuevos servicios de forma individual, vinculándolos a subcategorías y definiendo sus precios por urgencia.
+
+### Consultar Estadísticas (`CasoUsoConsultarEstadisticasColaborador`)
+- **`ejecutar`**: Calcula el resumen de actividad (ganancias, servicios terminados, rating y pendientes).
+
+### Calificar Servicio (`CasoUsoCalificarServicio`)
+- **`ejecutar`**: 
+  1. Verifica que la solicitud exista y esté en estado `Terminado`.
+  2. Valida que no exista una calificación previa.
+  3. Registra la reseña y comentario.
+
+### Actualizar Documentación (`CasoUsoActualizarDocumentacion`)
+- **`ejecutar`**: Actualiza enlaces de INE y comprobante. Reinicia el estado a `Pendiente` de verificación humana.
+
+### Configurar Precios Dinámicos (`CasoUsoConfigurarPreciosDinamicos`)
+- **`ejecutar`**: Define recargos por lluvia, domingo y noche.
+
+### Configurar Horarios (`CasoUsoConfigurarHorarios`)
+- **`ejecutar`**: Actualiza la disponibilidad semanal (limpia registros anteriores y crea los nuevos).
 
 ### Listar Colaboradores Marketplace (`CasoUsoListarColaboradoresMarketplace`)
-- **`ejecutar`**:
-  - **Parámetros**: `subcategoria_id`, `latitud`, `longitud`.
-  - **Lógica**: 
-    1. Busca todos los servicios vinculados a la subcategoría en el radio de cobertura.
-    2. Cruza la información con el perfil Pro de los colaboradores.
-    3. Calcula el "precio desde" (Urgencia Baja).
-    4. Devuelve una lista ordenada por precio ascendente.
+- **`ejecutar`**: Filtra profesionales por cercanía geográfica y devuelve el precio base de urgencia baja como referencia.
 
 ### Solicitud de Servicio (`CasoUsoSolicitudServicio`)
-- **`crear_solicitud_directa`**:
-  - **Parámetros**: `usuario_id`, `colaborador_id`, `subcategoria_id`, `urgencia`, `descripcion_detallada`, `fotos_evidencia_inicial`, `latitud`, `longitud`.
-  - **Lógica**: 
-    1. Valida que el colaborador ofrezca el servicio en la subcategoría indicada.
-    2. Calcula el `precio_final = precio_base(urgencia) + (distancia * precio_por_kilometro)`.
-    3. Crea la solicitud en estado `PendienteDeRevision` adjuntando la evidencia del cliente.
-
-### Gestionar Mensajes (`CasoUsoGestionarMensajes`)
-- **`enviar_mensaje`**:
-  - **Parámetros**: `solicitud_id`, `emisor_id`, `contenido`.
-  - **Lógica**: Persiste un nuevo mensaje de texto vinculado a una solicitud existente para permitir la negociación o aclaraciones.
-- **`listar_mensajes`**:
-  - **Parámetros**: `solicitud_id`.
-  - **Lógica**: Recupera el historial completo de mensajes de una solicitud ordenados por fecha.
-
-- **`calcular_distancia_km`**: Implementa la fórmula de Haversine para determinar la distancia en kilómetros entre dos puntos geodésicos.
+- **`crear_solicitud_directa`**: 
+  1. Identifica el servicio del colaborador.
+  2. Calcula precio: `Base(Urgencia) + (Distancia * Precio_KM)`.
+  3. Persiste en estado `PendienteDeRevision`.
 
 ## Capa de Dominio (Puertos)
 
-### Repositorio de Categorias (`RepositorioCategoria`)
-- **`listar`**: Obtiene todas las categorias base.
-- **`listar_subcategorias`**: Obtiene las subcategorias de una categoria específica.
+### Repositorio de Colaboradores (`RepositorioColaborador`)
+- **`obtener_estadisticas`**: Consulta agregada de servicios y ganancias.
+- **`eliminar_trabajo_portafolio`**: Eliminación física del registro.
 
-### Repositorio de Servicios (`RepositorioServicio`)
-- **`buscar_por_categoria_y_cercania`**: Filtra en base de datos aquellos servicios vinculados a la subcategoria cuyo radio de cobertura (`distancia_maxima_kilometros`) incluya la posición del usuario.
-- **`buscar_por_colaborador`**: Obtiene todos los servicios registrados para un colaborador específico.
-- **`buscar_precio_por_servicio_y_urgencia`**: Obtiene el costo base específico de un servicio para un nivel de urgencia dado.
+### Repositorio de Solicitudes (`RepositorioSolicitud`)
+- **`buscar_por_id`**: Recuperación completa de una solicitud (implementado en MySQL y SQLite).
+- **`actualizar_estado`**: Cambio en el ciclo de vida de la orden.
 
 ## Capa de Infraestructura (API)
 
 ### Manejadores de Axum (`manejadores.rs`)
-- **`registrar_colaborador`**: Punto de entrada HTTP que deserializa el JSON de entrada y delega la ejecución al caso de uso correspondiente.
-- **`crear_solicitud`**: Recibe `subcategoria_id` y coordenadas para iniciar el proceso de matching.
+- Se encargan de la deserialización de JSON, extracción de parámetros de ruta (`Path`) y query, y el manejo de errores del sistema transformándolos en códigos de estado HTTP adecuados.
+- Implementan `axum::debug_handler` para facilitar la depuración de tipos en tiempo de compilación.
