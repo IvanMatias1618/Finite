@@ -158,6 +158,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         jwt_secret.clone(),
     ));
 
+    let conekta_api_key = std::env::var("CONEKTA_API_KEY").unwrap_or_else(|_| "key_sandbox_default".to_string());
+    let gestion_pagos = Arc::new(finit::aplicacion::servicios::gestion_pagos::CasoUsoGestionPagos::nuevo(
+        repositorio.clone(),
+        repositorio.clone(),
+        repositorio.clone(),
+        repositorio.clone(),
+        conekta_api_key,
+    ));
+
     let estado = Arc::new(EstadoApp {
         repositorio: repositorio.clone(),
         registro_colaborador,
@@ -183,6 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         gestionar_verificacion,
         cotizacion_especial,
         login_social,
+        gestion_pagos,
     });
 
     // Configurar Rutas

@@ -39,6 +39,9 @@ impl CasoUsoRegistroColaborador {
         telefono_verificacion: Option<String>,
         zona_trabajo: Option<String>,
         sitio_web: Option<String>,
+        foto_perfil: Option<String>,
+        medio_transporte: Option<String>,
+        especialidad_resumen: Option<String>,
         servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
     ) -> Result<i32, Box<dyn Error + Send + Sync>> {
         // Decodificar el token JWT
@@ -78,15 +81,15 @@ impl CasoUsoRegistroColaborador {
             telefono_verificacion,
             zona_trabajo,
             sitio_web,
-            foto_perfil: None,
-            especialidad_resumen: None,
+            foto_perfil,
+            especialidad_resumen,
             es_verificado: false,
             estado_verificacion: EstadoVerificacion::Pendiente,
             ine_frontal: None,
             ine_trasera: None,
             comprobante_domicilio: None,
             foto_selfie_ine: None,
-            medio_transporte: None,
+            medio_transporte,
             rating_promedio: Decimal::ZERO,
             total_servicios: 0,
         }).await?;

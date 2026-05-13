@@ -29,7 +29,7 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS usuario (id INT PRIMARY KEY AUTO_INCREMENT, nombre TEXT, correo VARCHAR(255) UNIQUE, contrasenna TEXT, rol VARCHAR(50) DEFAULT 'usuario')")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, telefono_verificacion TEXT, zona_trabajo TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal LONGTEXT, ine_trasera LONGTEXT, comprobante_domicilio LONGTEXT, foto_selfie_ine LONGTEXT, medio_transporte TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS colaborador (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, telefono TEXT, telefono_verificacion TEXT, zona_trabajo TEXT, sitio_web TEXT, foto_perfil TEXT, especialidad_resumen TEXT, es_verificado BOOLEAN DEFAULT FALSE, estado_verificacion ENUM('pendiente', 'verificado', 'rechazado') DEFAULT 'pendiente', ine_frontal LONGTEXT, ine_trasera LONGTEXT, comprobante_domicilio LONGTEXT, foto_selfie_ine LONGTEXT, medio_transporte TEXT, conekta_receptor_id TEXT, rating_promedio DECIMAL(3,2) DEFAULT 0.0, total_servicios INT DEFAULT 0)")
             .execute(&self.pool).await?;
 
         // Asegurar que estado_verificacion sea ENUM si ya existia como TEXT/VARCHAR
@@ -51,7 +51,8 @@ impl RepositorioMySQL {
             ("comprobante_domicilio", "LONGTEXT"),
             ("foto_selfie_ine", "LONGTEXT"),
             ("telefono_verificacion", "TEXT"),
-            ("zona_trabajo", "TEXT")
+            ("zona_trabajo", "TEXT"),
+            ("conekta_receptor_id", "TEXT")
         ];
 
         for (columna, tipo) in columnas_esperadas_colaborador {
@@ -89,8 +90,17 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS categoria (id INT PRIMARY KEY AUTO_INCREMENT, nombre VARCHAR(100) UNIQUE)")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS subcategoria (id INT PRIMARY KEY AUTO_INCREMENT, categoria_id INT, nombre TEXT, descripcion TEXT, FOREIGN KEY (categoria_id) REFERENCES categoria(id))")
+        sqlx::query("CREATE TABLE IF NOT EXISTS subcategoria (id INT PRIMARY KEY AUTO_INCREMENT, categoria_id INT, nombre TEXT, descripcion TEXT, precio_base DECIMAL(10,2) DEFAULT 0.0, FOREIGN KEY (categoria_id) REFERENCES categoria(id))")
             .execute(&self.pool).await?;
+
+        // Migracion para subcategoria: annadir precio_base si no existe
+        let existe_precio_base: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subcategoria' AND COLUMN_NAME = 'precio_base'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        if existe_precio_base == 0 {
+            sqlx::query("ALTER TABLE subcategoria ADD COLUMN precio_base DECIMAL(10,2) DEFAULT 0.0")
+                .execute(&self.pool).await?;
+            println!("🛠️  Columna 'precio_base' annadida a la tabla subcategoria.");
+        }
 
         sqlx::query("CREATE TABLE IF NOT EXISTS servicio (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, subcategoria_id INT, descripcion TEXT, distancia_maxima_kilometros DECIMAL(10,2), precio_por_kilometro DECIMAL(10,2), latitud DECIMAL(10,7), longitud DECIMAL(10,7), FOREIGN KEY (colaborador_id) REFERENCES colaborador(id), FOREIGN KEY (subcategoria_id) REFERENCES subcategoria(id))")
             .execute(&self.pool).await?;
@@ -98,8 +108,17 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS precio_servicio_urgencia (id INT PRIMARY KEY AUTO_INCREMENT, servicio_id INT, urgencia TEXT, precio DECIMAL(10,2))")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, colaborador_id INT, subcategoria_id INT, servicio_id INT, urgencia TEXT, precio_final DECIMAL(10,2), estado TEXT, descripcion_detallada TEXT, fotos_evidencia_inicial TEXT, latitud_usuario DECIMAL(10,7), longitud_usuario DECIMAL(10,7), fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, colaborador_id INT, subcategoria_id INT, servicio_id INT, urgencia TEXT, precio_final DECIMAL(10,2), estado TEXT, descripcion_detallada TEXT, fotos_evidencia_inicial TEXT, latitud_usuario DECIMAL(10,7), longitud_usuario DECIMAL(10,7), conekta_order_id TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
             .execute(&self.pool).await?;
+
+        // Migracion para solicitud_servicio: annadir conekta_order_id si no existe
+        let existe_conekta: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'solicitud_servicio' AND COLUMN_NAME = 'conekta_order_id'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        if existe_conekta == 0 {
+            sqlx::query("ALTER TABLE solicitud_servicio ADD COLUMN conekta_order_id TEXT")
+                .execute(&self.pool).await?;
+            println!("🛠️  Columna 'conekta_order_id' annadida a la tabla solicitud_servicio.");
+        }
 
         sqlx::query("CREATE TABLE IF NOT EXISTS mensaje_solicitud (id INT PRIMARY KEY AUTO_INCREMENT, solicitud_id INT, emisor_id INT, contenido TEXT, fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
             .execute(&self.pool).await?;

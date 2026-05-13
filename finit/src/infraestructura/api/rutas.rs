@@ -30,6 +30,7 @@ use crate::aplicacion::servicios::cotizar_servicio::CasoUsoCotizarServicio;
 use crate::aplicacion::servicios::gestionar_verificacion::CasoUsoGestionarVerificacion;
 use crate::aplicacion::servicios::cotizacion_especial::CasoUsoCotizacionEspecial;
 use crate::aplicacion::servicios::login_social::CasoUsoLoginSocial;
+use crate::aplicacion::servicios::gestion_pagos::CasoUsoGestionPagos;
 
 use crate::infraestructura::RepositorioMySQL;
 
@@ -58,6 +59,7 @@ pub struct EstadoApp {
     pub gestionar_verificacion: Arc<CasoUsoGestionarVerificacion>,
     pub cotizacion_especial: Arc<CasoUsoCotizacionEspecial>,
     pub login_social: Arc<CasoUsoLoginSocial>,
+    pub gestion_pagos: Arc<CasoUsoGestionPagos>,
 }
 
 use tower_http::services::ServeDir;
@@ -81,6 +83,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/calificaciones", post(manejadores::calificar_servicio))
         .route("/cotizar", post(manejadores::cotizar_servicio))
         .route("/cotizaciones-especiales", post(manejadores::solicitar_cotizacion_especial))
+        .route("/pagos/confirmar", post(manejadores::confirmar_pago))
         .nest("/admin", Router::new()
             .route("/colaboradores/pendientes", get(manejadores::listar_colaboradores_pendientes))
             .route("/query", post(manejadores::ejecutar_consulta_sql))
@@ -103,6 +106,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/subcategorias/:id/colaboradores", get(manejadores::listar_colaboradores_marketplace))
         .route("/colaboradores/:id", get(manejadores::consultar_perfil_colaborador))
         .route("/colaboradores/:id/estadisticas", get(manejadores::consultar_estadisticas_colaborador))
+        .route("/api/conekta/webhook", post(manejadores::conekta_webhook))
         .merge(rutas_protegidas)
         .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // Limite de 20MB para subida de documentos base64
         .with_state(estado)

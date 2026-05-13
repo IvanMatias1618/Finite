@@ -19,7 +19,7 @@ impl RepositorioCategoria for RepositorioMySQL {
 
     async fn listar_subcategorias(&self, categoria_id: i32) -> Result<Vec<Subcategoria>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, Subcategoria>(
-            "SELECT id, categoria_id, nombre, descripcion FROM subcategoria WHERE categoria_id = ?"
+            "SELECT id, categoria_id, nombre, descripcion, precio_base FROM subcategoria WHERE categoria_id = ?"
         )
         .bind(categoria_id)
         .fetch_all(&self.pool)
@@ -30,7 +30,7 @@ impl RepositorioCategoria for RepositorioMySQL {
 
     async fn buscar_subcategoria_por_id(&self, id: i32) -> Result<Option<Subcategoria>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, Subcategoria>(
-            "SELECT id, categoria_id, nombre, descripcion FROM subcategoria WHERE id = ?"
+            "SELECT id, categoria_id, nombre, descripcion, precio_base FROM subcategoria WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)

@@ -381,6 +381,9 @@ pub struct DatosRegistro {
     pub telefono_verificacion: Option<String>,
     pub zona_trabajo: Option<String>,
     pub sitio_web: Option<String>,
+    pub foto_perfil: Option<String>,
+    pub medio_transporte: Option<String>,
+    pub especialidad_resumen: Option<String>,
     pub servicios: Vec<(Servicio, Vec<PrecioServicioUrgencia>)>,
 }
 
@@ -397,6 +400,9 @@ pub async fn registrar_colaborador(
             datos.telefono_verificacion,
             datos.zona_trabajo,
             datos.sitio_web,
+            datos.foto_perfil,
+            datos.medio_transporte,
+            datos.especialidad_resumen,
             datos.servicios
         )
         .await
@@ -611,6 +617,30 @@ pub async fn login_facebook(
 ) -> Result<Json<String>, AppError> {
     match estado.login_social.ejecutar("facebook".to_string(), datos.token_social, datos.rol_solicitado).await {
         Ok(token) => Ok(Json(token)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+use crate::aplicacion::servicios::gestion_pagos::{ConfirmacionPagoRequest, ConfirmacionPagoResponse};
+
+#[axum::debug_handler]
+pub async fn confirmar_pago(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<ConfirmacionPagoRequest>,
+) -> Result<Json<ConfirmacionPagoResponse>, AppError> {
+    match estado.gestion_pagos.confirmar_pago(datos).await {
+        Ok(respuesta) => Ok(Json(respuesta)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[axum::debug_handler]
+pub async fn conekta_webhook(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(evento): Json<serde_json::Value>,
+) -> Result<StatusCode, AppError> {
+    match estado.gestion_pagos.procesar_webhook(evento).await {
+        Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(AppError(e.to_string())),
     }
 }

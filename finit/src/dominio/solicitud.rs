@@ -13,6 +13,7 @@ pub enum EstadoSolicitud {
     Terminado,
     Cancelado,
     EnEsperaDePago,
+    Pagado,
 }
 
 impl EstadoSolicitud {
@@ -24,6 +25,7 @@ impl EstadoSolicitud {
             "terminado" => Some(Self::Terminado),
             "cancelado" => Some(Self::Cancelado),
             "en_espera_de_pago" => Some(Self::EnEsperaDePago),
+            "pagado" => Some(Self::Pagado),
             _ => None,
         }
     }
@@ -43,5 +45,6 @@ pub struct SolicitudServicio {
     pub fotos_evidencia_inicial: Option<String>,
     pub latitud_usuario: Option<Decimal>,
     pub longitud_usuario: Option<Decimal>,
+    pub conekta_order_id: Option<String>,
     pub fecha_creacion: Option<DateTime<Utc>>,
 }

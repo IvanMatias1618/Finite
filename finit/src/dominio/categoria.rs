@@ -15,4 +15,5 @@ pub struct Subcategoria {
     pub categoria_id: i32,
     pub nombre: String,
     pub descripcion: Option<String>,
+    pub precio_base: Decimal,
 }

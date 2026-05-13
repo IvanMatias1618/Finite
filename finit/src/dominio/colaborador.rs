@@ -46,6 +46,7 @@ pub struct Colaborador {
     pub comprobante_domicilio: Option<String>,
     pub foto_selfie_ine: Option<String>,
     pub medio_transporte: Option<String>,
+    pub conekta_receptor_id: Option<String>,
     #[sqlx(default)]
     pub rating_promedio: Decimal,
     pub total_servicios: i32,

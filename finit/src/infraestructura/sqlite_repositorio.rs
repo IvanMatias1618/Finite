@@ -299,18 +299,24 @@ impl RepositorioServicio for RepositorioSQLite {
 #[async_trait]
 impl RepositorioSolicitud for RepositorioSQLite {
     async fn crear(&self, solicitud: SolicitudServicio) -> Result<SolicitudServicio, Box<dyn Error + Send + Sync>> {
-        let resultado = sqlx::query("INSERT INTO solicitud_servicio (usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        let resultado = sqlx::query("INSERT INTO solicitud_servicio (usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(solicitud.usuario_id).bind(solicitud.colaborador_id).bind(solicitud.subcategoria_id).bind(solicitud.servicio_id)
             .bind(solicitud.urgencia.a_cadena()).bind(solicitud.precio_final.to_string()).bind("pendiente_de_revision").bind(&solicitud.descripcion_detallada)
-            .bind(&solicitud.fotos_evidencia_inicial).bind(solicitud.latitud_usuario.map(|d| d.to_string())).bind(solicitud.longitud_usuario.map(|d| d.to_string())).execute(&self.pool).await?;
+            .bind(&solicitud.fotos_evidencia_inicial).bind(solicitud.latitud_usuario.map(|d| d.to_string())).bind(solicitud.longitud_usuario.map(|d| d.to_string()))
+            .bind(&solicitud.conekta_order_id)
+            .execute(&self.pool).await?;
         Ok(SolicitudServicio { id: Some(resultado.last_insert_rowid() as i32), ..solicitud })
     }
     async fn buscar_por_id(&self, id: i32) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
-        let row = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE id = ?").bind(id).fetch_optional(&self.pool).await?;
+        let row = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE id = ?").bind(id).fetch_optional(&self.pool).await?;
+        if let Some(r) = row { Ok(Some(self.mapear_solicitud(r)?)) } else { Ok(None) }
+    }
+    async fn buscar_por_orden_conekta(&self, orden_id: &str) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
+        let row = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE conekta_order_id = ?").bind(orden_id).fetch_optional(&self.pool).await?;
         if let Some(r) = row { Ok(Some(self.mapear_solicitud(r)?)) } else { Ok(None) }
     }
     async fn listar_por_usuario(&self, usuario_id: i32) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
-        let rows = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ? ORDER BY fecha_creacion DESC").bind(usuario_id).fetch_all(&self.pool).await?;
+        let rows = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ? ORDER BY fecha_creacion DESC").bind(usuario_id).fetch_all(&self.pool).await?;
         let mut solicitudes = Vec::new();
         for r in rows {
             solicitudes.push(self.mapear_solicitud(r)?);
@@ -318,7 +324,7 @@ impl RepositorioSolicitud for RepositorioSQLite {
         Ok(solicitudes)
     }
     async fn listar_todas(&self) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
-        let rows = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, fecha_creacion FROM solicitud_servicio ORDER BY fecha_creacion DESC").fetch_all(&self.pool).await?;
+        let rows = sqlx::query("SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio ORDER BY fecha_creacion DESC").fetch_all(&self.pool).await?;
         let mut solicitudes = Vec::new();
         for r in rows {
             solicitudes.push(self.mapear_solicitud(r)?);
@@ -333,8 +339,14 @@ impl RepositorioSolicitud for RepositorioSQLite {
             EstadoSolicitud::Terminado => "terminado",
             EstadoSolicitud::Cancelado => "cancelado",
             EstadoSolicitud::EnEsperaDePago => "en_espera_de_pago",
-        };
+            EstadoSolicitud::Pagado => "pagado",
+            };
+
         sqlx::query("UPDATE solicitud_servicio SET estado = ? WHERE id = ?").bind(estado_str).bind(id).execute(&self.pool).await?;
+        Ok(())
+    }
+    async fn actualizar_orden_conekta(&self, id: i32, orden_id: String) -> Result<(), Box<dyn Error + Send + Sync>> {
+        sqlx::query("UPDATE solicitud_servicio SET conekta_order_id = ? WHERE id = ?").bind(orden_id).bind(id).execute(&self.pool).await?;
         Ok(())
     }
 }
@@ -423,7 +435,7 @@ impl RepositorioSQLite {
         use chrono::{DateTime, Utc};
         let urgencia_str: String = r.get(5);
         let estado_str: String = r.get(7);
-        let fecha_str: String = r.get(12);
+        let fecha_str: String = r.get(13);
         Ok(SolicitudServicio {
             id: Some(r.get(0)), usuario_id: r.get(1), colaborador_id: r.get(2), subcategoria_id: r.get(3), servicio_id: r.get(4),
             urgencia: Urgencia::desde_cadena(&urgencia_str).unwrap_or(Urgencia::Baja),
@@ -432,6 +444,7 @@ impl RepositorioSQLite {
             descripcion_detallada: r.get(8), fotos_evidencia_inicial: r.get(9),
             latitud_usuario: r.get::<Option<String>, _>(10).and_then(|s| s.parse().ok()),
             longitud_usuario: r.get::<Option<String>, _>(11).and_then(|s| s.parse().ok()),
+            conekta_order_id: r.get(12),
             fecha_creacion: Some(DateTime::parse_from_str(&format!("{} +0000", fecha_str), "%Y-%m-%d %H:%M:%S %z")?.with_timezone(&Utc)),
         })
     }

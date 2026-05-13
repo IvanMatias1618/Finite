@@ -70,6 +70,7 @@ impl CasoUsoSolicitudServicio {
             fotos_evidencia_inicial,
             latitud_usuario: Some(latitud),
             longitud_usuario: Some(longitud),
+            conekta_order_id: None,
             fecha_creacion: None,
         };
 

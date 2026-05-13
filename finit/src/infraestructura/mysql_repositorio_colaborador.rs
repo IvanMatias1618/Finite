@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 impl RepositorioColaborador for RepositorioMySQL {
     async fn guardar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO colaborador (usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO colaborador (usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, conekta_receptor_id, rating_promedio, total_servicios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(colaborador.usuario_id)
         .bind(&colaborador.telefono)
@@ -26,6 +26,7 @@ impl RepositorioColaborador for RepositorioMySQL {
         .bind(&colaborador.comprobante_domicilio)
         .bind(&colaborador.foto_selfie_ine)
         .bind(&colaborador.medio_transporte)
+        .bind(&colaborador.conekta_receptor_id)
         .bind(colaborador.rating_promedio)
         .bind(colaborador.total_servicios)
         .execute(&self.pool)
@@ -40,7 +41,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn actualizar(&self, colaborador: Colaborador) -> Result<Colaborador, Box<dyn Error + Send + Sync>> {
         sqlx::query(
-            "UPDATE colaborador SET telefono = ?, telefono_verificacion = ?, zona_trabajo = ?, sitio_web = ?, foto_perfil = ?, especialidad_resumen = ?, es_verificado = ?, estado_verificacion = ?, ine_frontal = ?, ine_trasera = ?, comprobante_domicilio = ?, foto_selfie_ine = ?, medio_transporte = ?, rating_promedio = ?, total_servicios = ? WHERE id = ?"
+            "UPDATE colaborador SET telefono = ?, telefono_verificacion = ?, zona_trabajo = ?, sitio_web = ?, foto_perfil = ?, especialidad_resumen = ?, es_verificado = ?, estado_verificacion = ?, ine_frontal = ?, ine_trasera = ?, comprobante_domicilio = ?, foto_selfie_ine = ?, medio_transporte = ?, conekta_receptor_id = ?, rating_promedio = ?, total_servicios = ? WHERE id = ?"
         )
         .bind(&colaborador.telefono)
         .bind(&colaborador.telefono_verificacion)
@@ -55,6 +56,7 @@ impl RepositorioColaborador for RepositorioMySQL {
         .bind(&colaborador.comprobante_domicilio)
         .bind(&colaborador.foto_selfie_ine)
         .bind(&colaborador.medio_transporte)
+        .bind(&colaborador.conekta_receptor_id)
         .bind(colaborador.rating_promedio)
         .bind(colaborador.total_servicios)
         .bind(colaborador.id)
@@ -66,7 +68,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn buscar_por_id(&self, id: i32) -> Result<Option<Colaborador>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query(
-            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
+            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, conekta_receptor_id, rating_promedio, total_servicios FROM colaborador WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -90,6 +92,7 @@ impl RepositorioColaborador for RepositorioMySQL {
                 comprobante_domicilio: row.get::<Option<String>, _>("comprobante_domicilio"),
                 foto_selfie_ine: row.get::<Option<String>, _>("foto_selfie_ine"),
                 medio_transporte: row.get::<Option<String>, _>("medio_transporte"),
+                conekta_receptor_id: row.get::<Option<String>, _>("conekta_receptor_id"),
                 rating_promedio: row.get::<Decimal, _>("rating_promedio"),
                 total_servicios: row.get::<i32, _>("total_servicios"),
             }))
