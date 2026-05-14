@@ -43,6 +43,7 @@ pub struct SolicitudServicio {
     pub estado: EstadoSolicitud,
     pub descripcion_detallada: String,
     pub fotos_evidencia_inicial: Option<String>,
+    pub fotos_evidencia_final: Option<String>,
     pub latitud_usuario: Option<Decimal>,
     pub longitud_usuario: Option<Decimal>,
     pub conekta_order_id: Option<String>,

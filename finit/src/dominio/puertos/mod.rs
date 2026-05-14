@@ -8,4 +8,5 @@ pub mod repositorio_disponibilidad;
 pub mod repositorio_configuracion_precio;
 pub mod repositorio_resennia;
 pub mod repositorio_cotizacion_especial;
+pub mod repositorio_soporte;
 pub mod proveedor_social;

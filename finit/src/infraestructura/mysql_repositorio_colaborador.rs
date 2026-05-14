@@ -103,11 +103,11 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn guardar_trabajo_portafolio(&self, trabajo: TrabajoPortafolio) -> Result<TrabajoPortafolio, Box<dyn Error + Send + Sync>> {
         let resultado = sqlx::query(
-            "INSERT INTO portafolio_colaborador (colaborador_id, foto_antes, foto_despues, descripcion) VALUES (?, ?, ?, ?)"
+            "INSERT INTO portafolio_colaborador (colaborador_id, titulo, imagen, descripcion) VALUES (?, ?, ?, ?)"
         )
         .bind(trabajo.colaborador_id)
-        .bind(&trabajo.foto_antes)
-        .bind(&trabajo.foto_despues)
+        .bind(&trabajo.titulo)
+        .bind(&trabajo.imagen)
         .bind(&trabajo.descripcion)
         .execute(&self.pool)
         .await?;
@@ -121,7 +121,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn buscar_portafolio_por_colaborador(&self, colaborador_id: i32) -> Result<Vec<TrabajoPortafolio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, TrabajoPortafolio>(
-            "SELECT id, colaborador_id, foto_antes, foto_despues, descripcion FROM portafolio_colaborador WHERE colaborador_id = ?"
+            "SELECT id, colaborador_id, titulo, imagen, descripcion FROM portafolio_colaborador WHERE colaborador_id = ?"
         )
         .bind(colaborador_id)
         .fetch_all(&self.pool)

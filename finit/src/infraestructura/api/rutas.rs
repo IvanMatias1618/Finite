@@ -48,6 +48,7 @@ pub struct EstadoApp {
     pub listar_colaboradores_marketplace: Arc<CasoUsoListarColaboradoresMarketplace>,
     pub gestionar_mensajes: Arc<CasoUsoGestionarMensajes>,
     pub gestionar_portafolio: Arc<CasoUsoGestionarPortafolio>,
+    pub gestionar_soporte: Arc<CasoUsoGestionarSoporte>,
     pub actualizar_documentacion: Arc<CasoUsoActualizarDocumentacion>,
     pub configurar_precios_dinamicos: Arc<CasoUsoConfigurarPreciosDinamicos>,
     pub configurar_horarios: Arc<CasoUsoConfigurarHorarios>,
@@ -77,6 +78,8 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/solicitudes", get(manejadores::listar_solicitudes))
         .route("/solicitudes/:id/aceptar", post(manejadores::aceptar_solicitud))
         .route("/solicitudes/:id/finalizar", post(manejadores::finalizar_solicitud))
+        .route("/solicitudes/:id/evidencia", post(manejadores::subir_evidencia_trabajo))
+        .route("/soporte/reportar", post(manejadores::crear_reporte_soporte))
         .route("/solicitudes/:id/cancelar", post(manejadores::cancelar_solicitud))
         .route("/solicitudes/:id/mensajes", post(manejadores::enviar_mensaje))
         .route("/solicitudes/:id/mensajes", get(manejadores::listar_mensajes))

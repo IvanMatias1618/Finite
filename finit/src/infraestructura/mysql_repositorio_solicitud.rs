@@ -20,7 +20,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
         };
 
         let resultado = sqlx::query(
-            "INSERT INTO solicitud_servicio (usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO solicitud_servicio (usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, fotos_evidencia_final, latitud_usuario, longitud_usuario, conekta_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(solicitud.usuario_id)
         .bind(solicitud.colaborador_id)
@@ -31,6 +31,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
         .bind(estado_cadena)
         .bind(&solicitud.descripcion_detallada)
         .bind(&solicitud.fotos_evidencia_inicial)
+        .bind(&solicitud.fotos_evidencia_final)
         .bind(solicitud.latitud_usuario)
         .bind(solicitud.longitud_usuario)
         .bind(&solicitud.conekta_order_id)
@@ -46,7 +47,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
 
     async fn buscar_por_id(&self, id: i32) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, SolicitudServicio>(
-            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE id = ?"
+            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, fotos_evidencia_final, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -57,7 +58,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
 
     async fn buscar_por_orden_conekta(&self, orden_id: &str) -> Result<Option<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
         let registro = sqlx::query_as::<MySql, SolicitudServicio>(
-            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE conekta_order_id = ?"
+            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, fotos_evidencia_final, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE conekta_order_id = ?"
         )
         .bind(orden_id)
         .fetch_optional(&self.pool)
@@ -68,7 +69,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
 
     async fn listar_por_usuario(&self, usuario_id: i32) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, SolicitudServicio>(
-            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ?"
+            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, fotos_evidencia_final, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio WHERE usuario_id = ?"
         )
         .bind(usuario_id)
         .fetch_all(&self.pool)
@@ -79,7 +80,7 @@ impl RepositorioSolicitud for RepositorioMySQL {
 
     async fn listar_todas(&self) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query_as::<MySql, SolicitudServicio>(
-            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio"
+            "SELECT id, usuario_id, colaborador_id, subcategoria_id, servicio_id, urgencia, precio_final, estado, descripcion_detallada, fotos_evidencia_inicial, fotos_evidencia_final, latitud_usuario, longitud_usuario, conekta_order_id, fecha_creacion FROM solicitud_servicio"
         )
         .fetch_all(&self.pool).await?;
 
@@ -116,6 +117,19 @@ impl RepositorioSolicitud for RepositorioMySQL {
         .bind(id)
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    async fn actualizar_evidencia(&self, id: i32, inicial: bool, fotos: String) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let columna = if inicial { "fotos_evidencia_inicial" } else { "fotos_evidencia_final" };
+        let query = format!("UPDATE solicitud_servicio SET {} = ? WHERE id = ?", columna);
+        
+        sqlx::query(&query)
+            .bind(fotos)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

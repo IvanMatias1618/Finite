@@ -494,9 +494,9 @@ pub struct DatosRegistrarServicio {
 
 #[derive(Deserialize)]
 pub struct DatosTrabajoPortafolio {
-    pub foto_antes: String,
-    pub foto_despues: String,
-    pub descripcion: String,
+    pub titulo: String,
+    pub imagen: String,
+    pub descripcion: Option<String>,
 }
 
 #[axum::debug_handler]
@@ -508,13 +508,52 @@ pub async fn annadir_trabajo_portafolio(
     let trabajo = TrabajoPortafolio {
         id: None,
         colaborador_id: id,
-        foto_antes: datos.foto_antes,
-        foto_despues: datos.foto_despues,
+        titulo: datos.titulo,
+        imagen: datos.imagen,
         descripcion: datos.descripcion,
     };
 
     match estado.gestionar_portafolio.annadir_trabajo(id, trabajo).await {
         Ok(t) => Ok(Json(t)),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DatosEvidenciaTrabajo {
+    pub inicial: bool,
+    pub fotos: String, // JSON array de Base64 o URLs
+}
+
+#[axum::debug_handler]
+pub async fn subir_evidencia_trabajo(
+    State(estado): State<Arc<EstadoApp>>,
+    Path(id): Path<i32>,
+    Extension(claims): Extension<Claims>,
+    Json(datos): Json<DatosEvidenciaTrabajo>,
+) -> Result<StatusCode, AppError> {
+    let colaborador_id = claims.sub.parse::<i32>().map_err(|_| AppError("Token invalido".into()))?;
+    match estado.gestionar_estado_solicitud.subir_evidencia(id, colaborador_id, datos.inicial, datos.fotos).await {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(AppError(e.to_string())),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct DatosReporteSoporte {
+    pub descripcion: String,
+    pub fotos: Option<String>,
+}
+
+#[axum::debug_handler]
+pub async fn crear_reporte_soporte(
+    State(estado): State<Arc<EstadoApp>>,
+    Extension(claims): Extension<Claims>,
+    Json(datos): Json<DatosReporteSoporte>,
+) -> Result<Json<i32>, AppError> {
+    let usuario_id = claims.sub.parse::<i32>().map_err(|_| AppError("Token invalido".into()))?;
+    match estado.gestionar_soporte.crear_reporte(usuario_id, datos.descripcion, datos.fotos).await {
+        Ok(id) => Ok(Json(id)),
         Err(e) => Err(AppError(e.to_string())),
     }
 }

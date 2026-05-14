@@ -11,4 +11,5 @@ pub trait RepositorioSolicitud: Send + Sync {
     async fn listar_todas(&self) -> Result<Vec<SolicitudServicio>, Box<dyn Error + Send + Sync>>;
     async fn actualizar_estado(&self, id: i32, estado: crate::dominio::solicitud::EstadoSolicitud) -> Result<(), Box<dyn Error + Send + Sync>>;
     async fn actualizar_orden_conekta(&self, id: i32, orden_id: String) -> Result<(), Box<dyn Error + Send + Sync>>;
+    async fn actualizar_evidencia(&self, id: i32, inicial: bool, fotos: String) -> Result<(), Box<dyn Error + Send + Sync>>;
 }

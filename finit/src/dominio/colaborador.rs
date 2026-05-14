@@ -56,9 +56,9 @@ pub struct Colaborador {
 pub struct TrabajoPortafolio {
     pub id: Option<i32>,
     pub colaborador_id: i32,
-    pub foto_antes: String,
-    pub foto_despues: String,
-    pub descripcion: String,
+    pub titulo: String,
+    pub imagen: String,
+    pub descripcion: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

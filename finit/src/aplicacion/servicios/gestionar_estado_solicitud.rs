@@ -63,4 +63,21 @@ impl CasoUsoGestionarEstadoSolicitud {
 
         self.repo_solicitud.actualizar_estado(solicitud_id, EstadoSolicitud::Cancelado).await
     }
+
+    pub async fn subir_evidencia(
+        &self,
+        solicitud_id: i32,
+        colaborador_id: i32,
+        inicial: bool,
+        fotos: String,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let solicitud = self.repo_solicitud.buscar_por_id(solicitud_id).await?
+            .ok_or("Solicitud no encontrada")?;
+
+        if solicitud.colaborador_id != colaborador_id {
+            return Err("No tienes permiso para subir evidencia a esta solicitud".into());
+        }
+
+        self.repo_solicitud.actualizar_evidencia(solicitud_id, inicial, fotos).await
+    }
 }

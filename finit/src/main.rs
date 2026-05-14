@@ -11,6 +11,7 @@ use finit::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use finit::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use finit::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
 use finit::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
+use finit::aplicacion::servicios::gestionar_soporte::CasoUsoGestionarSoporte;
 use finit::aplicacion::servicios::actualizar_documentacion::CasoUsoActualizarDocumentacion;
 use finit::aplicacion::servicios::configurar_precios_dinamicos::CasoUsoConfigurarPreciosDinamicos;
 use finit::aplicacion::servicios::configurar_horarios::CasoUsoConfigurarHorarios;
@@ -106,6 +107,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         repositorio.clone(),
     ));
 
+    let gestionar_soporte = Arc::new(CasoUsoGestionarSoporte::nuevo(
+        repositorio.clone(),
+    ));
+
     let actualizar_documentacion = Arc::new(CasoUsoActualizarDocumentacion::nuevo(
         repositorio.clone(),
     ));
@@ -181,6 +186,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         listar_colaboradores_marketplace,
         gestionar_mensajes,
         gestionar_portafolio,
+        gestionar_soporte,
         actualizar_documentacion,
         configurar_precios_dinamicos,
         configurar_horarios,

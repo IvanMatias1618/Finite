@@ -11,6 +11,7 @@ pub mod mysql_repositorio_disponibilidad;
 pub mod mysql_repositorio_configuracion_precio;
 pub mod mysql_repositorio_resennia;
 pub mod mysql_repositorio_cotizacion_especial;
+pub mod mysql_repositorio_soporte;
 pub mod sqlite_repositorio;
 pub mod social;
 pub mod api;
@@ -78,7 +79,20 @@ impl RepositorioMySQL {
             println!("🛠️  Columna 'rol' annadida a la tabla usuario.");
         }
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS portafolio_colaborador (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, foto_antes TEXT, foto_despues TEXT, descripcion TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
+        sqlx::query("CREATE TABLE IF NOT EXISTS portafolio_colaborador (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, titulo TEXT, imagen TEXT, descripcion TEXT, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
+            .execute(&self.pool).await?;
+
+        // Migracion para portafolio_colaborador: cambiar foto_antes/foto_despues por titulo/imagen si es necesario
+        let existe_titulo: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'portafolio_colaborador' AND COLUMN_NAME = 'titulo'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        if existe_titulo == 0 {
+            let _ = sqlx::query("ALTER TABLE portafolio_colaborador ADD COLUMN titulo TEXT").execute(&self.pool).await;
+            let _ = sqlx::query("ALTER TABLE portafolio_colaborador ADD COLUMN imagen TEXT").execute(&self.pool).await;
+            let _ = sqlx::query("UPDATE portafolio_colaborador SET titulo = 'Trabajo anterior', imagen = foto_despues").execute(&self.pool).await;
+            println!("🛠️  Tabla portafolio_colaborador actualizada a la nueva estructura.");
+        }
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS reporte_soporte (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, descripcion TEXT, fotos_evidencia TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (usuario_id) REFERENCES usuario(id))")
             .execute(&self.pool).await?;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS disponibilidad_colaborador (id INT PRIMARY KEY AUTO_INCREMENT, colaborador_id INT, dia_semana TINYINT, hora_inicio VARCHAR(5), hora_fin VARCHAR(5), activo BOOLEAN DEFAULT TRUE, FOREIGN KEY (colaborador_id) REFERENCES colaborador(id))")
@@ -108,16 +122,22 @@ impl RepositorioMySQL {
         sqlx::query("CREATE TABLE IF NOT EXISTS precio_servicio_urgencia (id INT PRIMARY KEY AUTO_INCREMENT, servicio_id INT, urgencia TEXT, precio DECIMAL(10,2))")
             .execute(&self.pool).await?;
 
-        sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, colaborador_id INT, subcategoria_id INT, servicio_id INT, urgencia TEXT, precio_final DECIMAL(10,2), estado TEXT, descripcion_detallada TEXT, fotos_evidencia_inicial TEXT, latitud_usuario DECIMAL(10,7), longitud_usuario DECIMAL(10,7), conekta_order_id TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        sqlx::query("CREATE TABLE IF NOT EXISTS solicitud_servicio (id INT PRIMARY KEY AUTO_INCREMENT, usuario_id INT, colaborador_id INT, subcategoria_id INT, servicio_id INT, urgencia TEXT, precio_final DECIMAL(10,2), estado TEXT, descripcion_detallada TEXT, fotos_evidencia_inicial TEXT, fotos_evidencia_final TEXT, latitud_usuario DECIMAL(10,7), longitud_usuario DECIMAL(10,7), conekta_order_id TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)")
             .execute(&self.pool).await?;
 
-        // Migracion para solicitud_servicio: annadir conekta_order_id si no existe
-        let existe_conekta: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'solicitud_servicio' AND COLUMN_NAME = 'conekta_order_id'")
-            .fetch_one(&self.pool).await.unwrap_or(0);
-        if existe_conekta == 0 {
-            sqlx::query("ALTER TABLE solicitud_servicio ADD COLUMN conekta_order_id TEXT")
-                .execute(&self.pool).await?;
-            println!("🛠️  Columna 'conekta_order_id' annadida a la tabla solicitud_servicio.");
+        // Migracion para solicitud_servicio: annadir conekta_order_id y fotos_evidencia_final si no existen
+        let columnas_solicitud = vec![
+            ("conekta_order_id", "TEXT"),
+            ("fotos_evidencia_final", "TEXT")
+        ];
+        for (col, tipo) in columnas_solicitud {
+            let query = format!("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'solicitud_servicio' AND COLUMN_NAME = '{}'", col);
+            let existe: i64 = sqlx::query_scalar(&query).fetch_one(&self.pool).await.unwrap_or(0);
+            if existe == 0 {
+                sqlx::query(&format!("ALTER TABLE solicitud_servicio ADD COLUMN {} {}", col, tipo))
+                    .execute(&self.pool).await?;
+                println!("🛠️  Columna '{}' annadida a la tabla solicitud_servicio.", col);
+            }
         }
 
         sqlx::query("CREATE TABLE IF NOT EXISTS mensaje_solicitud (id INT PRIMARY KEY AUTO_INCREMENT, solicitud_id INT, emisor_id INT, contenido TEXT, fecha_envio DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (solicitud_id) REFERENCES solicitud_servicio(id))")
