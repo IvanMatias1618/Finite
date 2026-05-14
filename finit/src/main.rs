@@ -158,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         jwt_secret.clone(),
     ));
 
-    let conekta_api_key = std::env::var("CONEKTA_API_KEY").unwrap_or_else(|_| "key_sandbox_default".to_string());
+    let conekta_api_key = std::env::var("CONEKTA_PRIVATE_KEY").unwrap_or_else(|_| "key_sandbox_default".to_string());
     let gestion_pagos = Arc::new(finit::aplicacion::servicios::gestion_pagos::CasoUsoGestionPagos::nuevo(
         repositorio.clone(),
         repositorio.clone(),

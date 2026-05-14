@@ -84,6 +84,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/cotizar", post(manejadores::cotizar_servicio))
         .route("/cotizaciones-especiales", post(manejadores::solicitar_cotizacion_especial))
         .route("/pagos/confirmar", post(manejadores::confirmar_pago))
+        .route("/confirmar/finalizar", post(manejadores::confirmar_pago))
         .nest("/admin", Router::new()
             .route("/colaboradores/pendientes", get(manejadores::listar_colaboradores_pendientes))
             .route("/query", post(manejadores::ejecutar_consulta_sql))

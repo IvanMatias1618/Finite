@@ -180,7 +180,7 @@ impl RepositorioColaborador for RepositorioMySQL {
 
     async fn listar_todos(&self) -> Result<Vec<Colaborador>, Box<dyn Error + Send + Sync>> {
         let registros = sqlx::query(
-            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, rating_promedio, total_servicios FROM colaborador"
+            "SELECT id, usuario_id, telefono, telefono_verificacion, zona_trabajo, sitio_web, foto_perfil, especialidad_resumen, es_verificado, estado_verificacion, ine_frontal, ine_trasera, comprobante_domicilio, foto_selfie_ine, medio_transporte, conekta_receptor_id, rating_promedio, total_servicios FROM colaborador"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -204,6 +204,7 @@ impl RepositorioColaborador for RepositorioMySQL {
                 comprobante_domicilio: row.get::<Option<String>, _>("comprobante_domicilio"),
                 foto_selfie_ine: row.get::<Option<String>, _>("foto_selfie_ine"),
                 medio_transporte: row.get::<Option<String>, _>("medio_transporte"),
+                conekta_receptor_id: row.get::<Option<String>, _>("conekta_receptor_id"),
                 rating_promedio: row.get::<Decimal, _>("rating_promedio"),
                 total_servicios: row.get::<i32, _>("total_servicios"),
             });

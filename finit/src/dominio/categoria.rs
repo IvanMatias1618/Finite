@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Categoria {

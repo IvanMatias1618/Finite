@@ -3,7 +3,9 @@ use crate::dominio::puertos::repositorio_solicitud::RepositorioSolicitud;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use std::error::Error;
 use std::sync::Arc;
+use std::str::FromStr;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 
@@ -62,7 +64,7 @@ impl CasoUsoGestionPagos {
             .ok_or("Subcategoría no encontrada")?;
         
         let precio_total = subcategoria.precio_base;
-        let monto_centavos = (precio_total * Decimal::from(100)).to_string().parse::<u64>().unwrap_or(0);
+        let monto_centavos = (precio_total * Decimal::from(100)).to_u64().unwrap_or(0);
 
         // 3. Obtener Datos del Colaborador para el split
         let colaborador = self.repositorio_colaborador.buscar_por_id(solicitud.colaborador_id).await?
@@ -77,17 +79,21 @@ impl CasoUsoGestionPagos {
 
         // 4. Distribución de Fondos (Split Payments) (Requerimiento 1.A.2)
         // Técnico (75%): Aplicar deducciones: monto = (total * 0.75) * (1 - 0.105)
-        let factor_tecnico = Decimal::from_str_radix("0.75", 10).unwrap() * (Decimal::ONE - Decimal::from_str_radix("0.105", 10).unwrap());
-        let monto_tecnico = (precio_total * factor_tecnico * Decimal::from(100)).to_string().parse::<u64>().unwrap_or(0);
+        let p75 = Decimal::from_str("0.75").unwrap();
+        let p105 = Decimal::from_str("0.105").unwrap();
+        let factor_tecnico = p75 * (Decimal::ONE - p105);
+        let monto_tecnico = (precio_total * factor_tecnico * Decimal::from(100)).to_u64().unwrap_or(0);
         
         // Okupo Clic (15%): monto = total * 0.15
-        let monto_okupo = (precio_total * Decimal::from_str_radix("0.15", 10).unwrap() * Decimal::from(100)).to_string().parse::<u64>().unwrap_or(0);
+        let p15 = Decimal::from_str("0.15").unwrap();
+        let monto_okupo = (precio_total * p15 * Decimal::from(100)).to_u64().unwrap_or(0);
         
         // Dueño (5%): monto = total * 0.05
-        let monto_duenno = (precio_total * Decimal::from_str_radix("0.05", 10).unwrap() * Decimal::from(100)).to_string().parse::<u64>().unwrap_or(0);
+        let p05 = Decimal::from_str("0.05").unwrap();
+        let monto_duenno = (precio_total * p05 * Decimal::from(100)).to_u64().unwrap_or(0);
         
         // Socio (5%): monto = total * 0.05
-        let monto_socio = (precio_total * Decimal::from_str_radix("0.05", 10).unwrap() * Decimal::from(100)).to_string().parse::<u64>().unwrap_or(0);
+        let monto_socio = (precio_total * p05 * Decimal::from(100)).to_u64().unwrap_or(0);
 
         // 5. Obtener datos del usuario para customer_info
         let usuario = self.repositorio_usuario.buscar_por_id(solicitud.usuario_id).await?
@@ -97,7 +103,7 @@ impl CasoUsoGestionPagos {
         let payload = serde_json::json!({
             "currency": "MXN",
             "customer_info": {
-                "name": usuario.nombre_completo,
+                "name": usuario.nombre,
                 "email": usuario.correo,
                 "phone": "+525555555555" // Placeholder o usar telefono de usuario si existe
             },
@@ -164,16 +170,19 @@ impl CasoUsoGestionPagos {
                 let order_id = evento["data"]["object"]["id"].as_str().unwrap_or("");
                 if let Some(solicitud) = self.repositorio_solicitud.buscar_por_orden_conekta(order_id).await? {
                     self.repositorio_solicitud.actualizar_estado(solicitud.id.unwrap(), EstadoSolicitud::Pagado).await?;
-                    println!("💰 Pago confirmado y estado actualizado para la solicitud: {}", solicitud.id.unwrap());
+                    println!("💰 PAGO CONFIRMADO: La solicitud #{} ha sido activada. Notificando al técnico #{}...", solicitud.id.unwrap(), solicitud.colaborador_id);
+                    // Aquí se dispararía la notificación push/SMS al técnico
                 } else {
-                    println!("⚠️ No se encontró solicitud para la orden de Conekta: {}", order_id);
+                    println!("⚠️ WEBHOOK ERROR: No se encontró solicitud para la orden de Conekta: {}", order_id);
                 }
             },
             "charge.refunded" => {
                 let order_id = evento["data"]["object"]["order_id"].as_str().unwrap_or("");
                 if let Some(solicitud) = self.repositorio_solicitud.buscar_por_orden_conekta(order_id).await? {
                     self.repositorio_solicitud.actualizar_estado(solicitud.id.unwrap(), EstadoSolicitud::Cancelado).await?;
-                    println!("↩️ Reembolso procesado y solicitud cancelada: {}", solicitud.id.unwrap());
+                    println!("↩️ REEMBOLSO PROCESADO: La solicitud #{} ha sido cancelada. Notificando al usuario #{} y al técnico #{}...", 
+                             solicitud.id.unwrap(), solicitud.usuario_id, solicitud.colaborador_id);
+                    // Aquí se dispararían las notificaciones de cancelación
                 }
             },
             _ => {

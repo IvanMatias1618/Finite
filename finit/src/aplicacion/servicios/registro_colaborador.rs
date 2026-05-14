@@ -90,6 +90,7 @@ impl CasoUsoRegistroColaborador {
             comprobante_domicilio: None,
             foto_selfie_ine: None,
             medio_transporte,
+            conekta_receptor_id: None,
             rating_promedio: Decimal::ZERO,
             total_servicios: 0,
         }).await?;
