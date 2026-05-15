@@ -3,7 +3,7 @@ use crate::dominio::puertos::repositorio_cotizacion_especial::RepositorioCotizac
 use crate::infraestructura::RepositorioMySQL;
 use std::error::Error;
 use async_trait::async_trait;
-use sqlx::{MySql, Row};
+use sqlx::MySql;
 
 #[async_trait]
 impl RepositorioCotizacionEspecial for RepositorioMySQL {

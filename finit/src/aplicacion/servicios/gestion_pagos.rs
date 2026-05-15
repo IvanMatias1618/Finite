@@ -23,6 +23,20 @@ pub struct ConfirmacionPagoResponse {
     pub conekta_order_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DesglosePago {
+    pub total: Decimal,
+    pub gasto_conekta: Decimal,
+    pub base_reparto: Decimal,
+    pub reparto_tecnico: Decimal,
+    pub reparto_empresa: Decimal,
+    pub reparto_mayoral: Decimal,
+    pub reparto_socio: Decimal,
+    pub impuesto_isr: Decimal,
+    pub impuesto_iva: Decimal,
+    pub impuesto_imss: Decimal,
+}
+
 pub struct CasoUsoGestionPagos {
     repositorio_solicitud: Arc<dyn RepositorioSolicitud>,
     repositorio_colaborador: Arc<dyn RepositorioColaborador>,
@@ -58,13 +72,15 @@ impl CasoUsoGestionPagos {
         let solicitud = self.repositorio_solicitud.buscar_por_id(request.solicitud_id).await?
             .ok_or("Solicitud no encontrada")?;
 
-        // 2. Validar Precio (Requerimiento 1.A.1)
+        // 2. Calcular Desglose (Reglas Mayoral v2)
         let subcat_id = request.subcategoria_id.unwrap_or(solicitud.subcategoria_id);
         let subcategoria = self.repositorio_categoria.buscar_subcategoria_por_id(subcat_id).await?
             .ok_or("Subcategoría no encontrada")?;
         
-        let precio_total = subcategoria.precio_base;
-        let monto_centavos = (precio_total * Decimal::from(100)).to_u64().unwrap_or(0);
+        let es_flete = subcategoria.nombre.to_uppercase().contains("FLETE");
+        let desglose = self.calcular_desglose(solicitud.precio_final, "tarjeta", es_flete);
+        
+        let monto_centavos = (desglose.total * Decimal::from(100)).to_u64().unwrap_or(0);
 
         // 3. Obtener Datos del Colaborador para el split
         let colaborador = self.repositorio_colaborador.buscar_por_id(solicitud.colaborador_id).await?
@@ -77,23 +93,11 @@ impl CasoUsoGestionPagos {
         let rec_duenno = std::env::var("CONEKTA_RECEPTOR_DUENNO_ID").unwrap_or_else(|_| "rec_default_duenno".to_string());
         let rec_socio = std::env::var("CONEKTA_RECEPTOR_SOCIO_ID").unwrap_or_else(|_| "rec_default_socio".to_string());
 
-        // 4. Distribución de Fondos (Split Payments) (Requerimiento 1.A.2)
-        // Técnico (75%): Aplicar deducciones: monto = (total * 0.75) * (1 - 0.105)
-        let p75 = Decimal::from_str("0.75").unwrap();
-        let p105 = Decimal::from_str("0.105").unwrap();
-        let factor_tecnico = p75 * (Decimal::ONE - p105);
-        let monto_tecnico = (precio_total * factor_tecnico * Decimal::from(100)).to_u64().unwrap_or(0);
-        
-        // Okupo Clic (15%): monto = total * 0.15
-        let p15 = Decimal::from_str("0.15").unwrap();
-        let monto_okupo = (precio_total * p15 * Decimal::from(100)).to_u64().unwrap_or(0);
-        
-        // Dueño (5%): monto = total * 0.05
-        let p05 = Decimal::from_str("0.05").unwrap();
-        let monto_duenno = (precio_total * p05 * Decimal::from(100)).to_u64().unwrap_or(0);
-        
-        // Socio (5%): monto = total * 0.05
-        let monto_socio = (precio_total * p05 * Decimal::from(100)).to_u64().unwrap_or(0);
+        // 4. Distribución de Fondos (Split Payments)
+        let monto_tecnico = (desglose.reparto_tecnico * Decimal::from(100)).to_u64().unwrap_or(0);
+        let monto_okupo = (desglose.reparto_empresa * Decimal::from(100)).to_u64().unwrap_or(0);
+        let monto_duenno = (desglose.reparto_mayoral * Decimal::from(100)).to_u64().unwrap_or(0);
+        let monto_socio = (desglose.reparto_socio * Decimal::from(100)).to_u64().unwrap_or(0);
 
         // 5. Obtener datos del usuario para customer_info
         let usuario = self.repositorio_usuario.buscar_por_id(solicitud.usuario_id).await?
@@ -157,6 +161,53 @@ impl CasoUsoGestionPagos {
             message: "Pago procesado y fondos distribuidos correctamente".to_string(),
             conekta_order_id: Some(conekta_order_id),
         })
+    }
+
+    pub fn calcular_desglose(&self, precio_total: Decimal, metodo_pago: &str, es_flete: bool) -> DesglosePago {
+        let total = precio_total;
+        
+        // 1. Gasto Conekta
+        let gasto_conekta = match metodo_pago {
+            "tarjeta" => {
+                let comision_base = (total * Decimal::from_str("0.029").unwrap()) + Decimal::from_str("2.50").unwrap();
+                comision_base * Decimal::from_str("1.16").unwrap()
+            },
+            "oxxo" | "efectivo" => Decimal::from_str("13.92").unwrap(),
+            "spei" => Decimal::from_str("5.80").unwrap(),
+            _ => Decimal::ZERO,
+        };
+
+        // 2. Impuestos
+        let isr_p = if es_flete { Decimal::from_str("0.021").unwrap() } else { Decimal::from_str("0.01").unwrap() };
+        let iva_p = Decimal::from_str("0.08").unwrap();
+        let imss_p = Decimal::from_str("0.015").unwrap();
+
+        let impuesto_isr = total * isr_p;
+        let impuesto_iva = total * iva_p;
+        let impuesto_imss = total * imss_p;
+        let total_impuestos = impuesto_isr + impuesto_iva + impuesto_imss;
+
+        // 3. Base Reparto
+        let base_reparto = total - gasto_conekta - total_impuestos;
+
+        // 4. Repartos (75/15/5/5)
+        let reparto_tecnico = base_reparto * Decimal::from_str("0.75").unwrap();
+        let reparto_empresa = base_reparto * Decimal::from_str("0.15").unwrap();
+        let reparto_mayoral = base_reparto * Decimal::from_str("0.05").unwrap();
+        let reparto_socio = base_reparto * Decimal::from_str("0.05").unwrap();
+
+        DesglosePago {
+            total,
+            gasto_conekta,
+            base_reparto,
+            reparto_tecnico,
+            reparto_empresa,
+            reparto_mayoral,
+            reparto_socio,
+            impuesto_isr,
+            impuesto_iva,
+            impuesto_imss,
+        }
     }
 
     pub async fn procesar_webhook(

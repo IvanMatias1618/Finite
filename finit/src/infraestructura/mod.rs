@@ -196,8 +196,46 @@ impl RepositorioMySQL {
         Ok(())
     }
 
+    pub async fn limpiar_y_sembrar(&self, admin_password: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+        println!("🧹 Limpiando base de datos...");
+
+        // Desactivar temporalmente las restricciones de llaves foraneas
+        sqlx::query("SET FOREIGN_KEY_CHECKS = 0").execute(&self.pool).await?;
+
+        let tablas = vec![
+            "mensaje_solicitud", "resennia", "solicitud_servicio", "precio_servicio_urgencia",
+            "servicio", "subcategoria", "categoria", "configuracion_precio_colaborador",
+            "disponibilidad_colaborador", "reporte_soporte", "portafolio_colaborador",
+            "colaborador", "usuario", "cotizacion_especial"
+        ];
+
+        for tabla in tablas {
+            sqlx::query(&format!("TRUNCATE TABLE {}", tabla)).execute(&self.pool).await?;
+        }
+
+        sqlx::query("SET FOREIGN_KEY_CHECKS = 1").execute(&self.pool).await?;
+
+        // Re-inicializar tablas y datos semilla
+        self.inicializar_tablas().await?;
+
+        // Crear usuario admin
+        println!("👤 Creando usuario administrador...");
+        let hash = bcrypt::hash(admin_password, bcrypt::DEFAULT_COST)?;
+        
+        sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
+            .bind("Administrador")
+            .bind("admin@finit.com")
+            .bind(hash)
+            .bind("admin")
+            .execute(&self.pool)
+            .await?;
+
+        println!("✨ Base de datos reseteada con éxito. Admin: admin@finit.com");
+        Ok(())
+    }
+
     pub async fn ejecutar_query(&self, sql: &str) -> Result<serde_json::Value, Box<dyn Error + Send + Sync>> {
-        use sqlx::{Column, Row, TypeInfo, ValueRef};
+        use sqlx::{Column, Row};
         
         // Determinar si es una consulta SELECT o una operacion de modificacion
         let sql_trimmed = sql.trim().to_uppercase();

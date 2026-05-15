@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::error::Error;
 use finit::aplicacion::servicios::registro_colaborador::CasoUsoRegistroColaborador;
 use finit::aplicacion::servicios::registro_usuario::CasoUsoRegistroUsuario;
 use finit::aplicacion::servicios::login_usuario::CasoUsoLoginUsuario;
@@ -32,8 +33,10 @@ use sqlx::MySqlPool;
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
+
+    let args: Vec<String> = std::env::args().collect();
     
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL debe estar configurada");
@@ -44,6 +47,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let pool = MySqlPool::connect(&database_url).await?;
     let repositorio = Arc::new(RepositorioMySQL::nuevo(pool));
+
+    // Verificar si se solicitó resetear la base de datos
+    if args.len() > 1 && args[1] == "--reset-db" {
+        let admin_pass = std::env::var("ADMIN_PASSWORD")
+            .unwrap_or_else(|_| "admin123".to_string());
+        repositorio.limpiar_y_sembrar(&admin_pass).await?;
+        println!("👋 Proceso de reset finalizado. Saliendo...");
+        return Ok(());
+    }
 
     // Inicializar Tablas
     repositorio.inicializar_tablas().await?;

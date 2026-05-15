@@ -32,6 +32,7 @@ async fn test_marketplace_colaboradores() {
         repositorio.clone(),
         repositorio.clone(),
         repositorio.clone(),
+        repositorio.clone(),
     );
 
     let lat = Decimal::new(190, 1); // 19.0

@@ -68,6 +68,7 @@ impl CasoUsoSolicitudServicio {
             estado: EstadoSolicitud::PendienteDeRevision,
             descripcion_detallada,
             fotos_evidencia_inicial,
+            fotos_evidencia_final: None,
             latitud_usuario: Some(latitud),
             longitud_usuario: Some(longitud),
             conekta_order_id: None,

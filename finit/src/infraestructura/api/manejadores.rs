@@ -660,7 +660,7 @@ pub async fn login_facebook(
     }
 }
 
-use crate::aplicacion::servicios::gestion_pagos::{ConfirmacionPagoRequest, ConfirmacionPagoResponse};
+use crate::aplicacion::servicios::gestion_pagos::{ConfirmacionPagoRequest, ConfirmacionPagoResponse, DesglosePago};
 
 #[axum::debug_handler]
 pub async fn confirmar_pago(
@@ -671,6 +671,22 @@ pub async fn confirmar_pago(
         Ok(respuesta) => Ok(Json(respuesta)),
         Err(e) => Err(AppError(e.to_string())),
     }
+}
+
+#[derive(Deserialize)]
+pub struct DatosDesglose {
+    pub precio_total: Decimal,
+    pub metodo_pago: String,
+    pub es_flete: bool,
+}
+
+#[axum::debug_handler]
+pub async fn obtener_desglose_pago(
+    State(estado): State<Arc<EstadoApp>>,
+    Json(datos): Json<DatosDesglose>,
+) -> Result<Json<DesglosePago>, AppError> {
+    let desglose = estado.gestion_pagos.calcular_desglose(datos.precio_total, &datos.metodo_pago, datos.es_flete);
+    Ok(Json(desglose))
 }
 
 #[axum::debug_handler]

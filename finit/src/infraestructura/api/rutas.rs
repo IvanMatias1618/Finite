@@ -13,6 +13,7 @@ use crate::aplicacion::servicios::solicitud_servicio::CasoUsoSolicitudServicio;
 use crate::aplicacion::servicios::listar_solicitudes::CasoUsoListarSolicitudes;
 use crate::aplicacion::servicios::listar_colaboradores_marketplace::CasoUsoListarColaboradoresMarketplace;
 use crate::aplicacion::servicios::gestionar_mensajes::CasoUsoGestionarMensajes;
+use crate::aplicacion::servicios::gestionar_soporte::CasoUsoGestionarSoporte;
 use super::manejadores;
 
 use crate::aplicacion::servicios::actualizar_documentacion::CasoUsoActualizarDocumentacion;
@@ -86,6 +87,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .route("/calificaciones", post(manejadores::calificar_servicio))
         .route("/cotizar", post(manejadores::cotizar_servicio))
         .route("/cotizaciones-especiales", post(manejadores::solicitar_cotizacion_especial))
+        .route("/pagos/desglose", post(manejadores::obtener_desglose_pago))
         .route("/pagos/confirmar", post(manejadores::confirmar_pago))
         .route("/confirmar/finalizar", post(manejadores::confirmar_pago))
         .nest("/admin", Router::new()
