@@ -199,8 +199,10 @@ impl RepositorioMySQL {
     pub async fn limpiar_y_sembrar(&self, admin_password: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         println!("🧹 Limpiando base de datos...");
 
+        let mut conn = self.pool.acquire().await?;
+
         // Desactivar temporalmente las restricciones de llaves foraneas
-        sqlx::query("SET FOREIGN_KEY_CHECKS = 0").execute(&self.pool).await?;
+        sqlx::query("SET FOREIGN_KEY_CHECKS = 0").execute(&mut *conn).await?;
 
         let tablas = vec![
             "mensaje_solicitud", "resennia", "solicitud_servicio", "precio_servicio_urgencia",
@@ -210,10 +212,10 @@ impl RepositorioMySQL {
         ];
 
         for tabla in tablas {
-            sqlx::query(&format!("TRUNCATE TABLE {}", tabla)).execute(&self.pool).await?;
+            sqlx::query(&format!("TRUNCATE TABLE {}", tabla)).execute(&mut *conn).await?;
         }
 
-        sqlx::query("SET FOREIGN_KEY_CHECKS = 1").execute(&self.pool).await?;
+        sqlx::query("SET FOREIGN_KEY_CHECKS = 1").execute(&mut *conn).await?;
 
         // Re-inicializar tablas y datos semilla
         self.inicializar_tablas().await?;
@@ -224,13 +226,13 @@ impl RepositorioMySQL {
         
         sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
             .bind("Administrador")
-            .bind("admin@finit.com")
+            .bind("admin@okupo.com")
             .bind(hash)
             .bind("admin")
-            .execute(&self.pool)
+            .execute(&mut *conn)
             .await?;
 
-        println!("✨ Base de datos reseteada con éxito. Admin: admin@finit.com");
+        println!("✨ Base de datos reseteada con éxito. Admin: admin@okupo.com");
         Ok(())
     }
 

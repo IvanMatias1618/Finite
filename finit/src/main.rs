@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Verificar si se solicitó resetear la base de datos
     if args.len() > 1 && args[1] == "--reset-db" {
         let admin_pass = std::env::var("ADMIN_PASSWORD")
-            .unwrap_or_else(|_| "admin123".to_string());
+            .unwrap_or_else(|_| "admin".to_string());
         repositorio.limpiar_y_sembrar(&admin_pass).await?;
         println!("👋 Proceso de reset finalizado. Saliendo...");
         return Ok(());
