@@ -33,10 +33,10 @@ use crate::aplicacion::servicios::cotizacion_especial::CasoUsoCotizacionEspecial
 use crate::aplicacion::servicios::login_social::CasoUsoLoginSocial;
 use crate::aplicacion::servicios::gestion_pagos::CasoUsoGestionPagos;
 
-use crate::infraestructura::RepositorioMySQL;
+use crate::dominio::puertos::repositorio_motor::RepositorioMotor;
 
 pub struct EstadoApp {
-    pub repositorio: Arc<RepositorioMySQL>,
+    pub repositorio: Arc<dyn RepositorioMotor>,
     pub registro_colaborador: Arc<CasoUsoRegistroColaborador>,
     pub registro_usuario: Arc<CasoUsoRegistroUsuario>,
     pub login_usuario: Arc<CasoUsoLoginUsuario>,
@@ -99,7 +99,7 @@ pub fn crear_rutas(estado: Arc<EstadoApp>) -> Router {
         .layer(from_fn_with_state(estado.clone(), middleware::validar_jwt));
 
     Router::new()
-        .route("/", get(|| async { "Bienvenido al motor finit - API activa (okupo.db)" }))
+        .route("/", get(|| async { "Bienvenido al motor finit - API activa" }))
         .nest_service("/archivos", ServeDir::new("uploads"))
         .route("/subidas", post(manejadores::subir_archivo))
         .route("/usuarios", post(manejadores::registrar_usuario))

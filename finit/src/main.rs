@@ -26,10 +26,11 @@ use finit::aplicacion::servicios::cotizacion_especial::CasoUsoCotizacionEspecial
 use finit::aplicacion::servicios::login_social::CasoUsoLoginSocial;
 use finit::infraestructura::social::google::GoogleProvider;
 use finit::infraestructura::social::facebook::FacebookProvider;
-use finit::infraestructura::RepositorioMySQL;
+use finit::infraestructura::{RepositorioMySQL, sqlite_repositorio::RepositorioSQLite};
 use finit::infraestructura::api::rutas as ax_routing;
 use finit::infraestructura::api::rutas::EstadoApp;
-use sqlx::MySqlPool;
+use finit::dominio::puertos::repositorio_motor::RepositorioMotor;
+use sqlx::{MySqlPool, SqlitePool};
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -38,24 +39,75 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let args: Vec<String> = std::env::args().collect();
     
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL debe estar configurada");
+    // Si no hay argumentos (solo el nombre del binario), mostramos el help
+    if args.len() == 1 {
+        mostrar_ayuda();
+        return Ok(());
+    }
+
+    match args[1].as_str() {
+        "run" => iniciar_servidor().await,
+        "--reset-db" => resetear_base_de_datos().await,
+        "--help" | "-h" => {
+            mostrar_ayuda();
+            Ok(())
+        },
+        _ => {
+            println!("❌ Comando no reconocido: {}", args[1]);
+            mostrar_ayuda();
+            Ok(())
+        }
+    }
+}
+
+fn mostrar_ayuda() {
+    println!("--- 🚀 MOTOR FINIT CLI ---");
+    println!("Uso: cargo run [comando]");
+    println!("");
+    println!("Comandos disponibles:");
+    println!("  run         Inicia el servidor API");
+    println!("  --reset-db  Limpia la base de datos y crea un usuario administrador");
+    println!("  --help      Muestra este resumen de comandos");
+    println!("");
+    println!("Configuración:");
+    println!("  Asegúrate de configurar el archivo .env con DATABASE_URL.");
+    println!("  Soporta MySQL (mysql://...) y SQLite (sqlite:...)");
+}
+
+async fn resetear_base_de_datos() -> Result<(), Box<dyn Error + Send + Sync>> {
+    let repo = obtener_repositorio().await?;
+    let admin_pass = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_string());
+    
+    println!("🧹 Iniciando reset de base de datos...");
+    repo.limpiar_y_sembrar(&admin_pass).await?;
+    println!("👋 Proceso de reset finalizado.");
+    Ok(())
+}
+
+async fn obtener_repositorio() -> Result<Arc<dyn RepositorioMotor>, Box<dyn Error + Send + Sync>> {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL debe estar configurada");
+    
+    if database_url.starts_with("mysql://") {
+        println!("🗄️ Usando motor MySQL");
+        let pool = MySqlPool::connect(&database_url).await?;
+        Ok(Arc::new(RepositorioMySQL::nuevo(pool)))
+    } else if database_url.starts_with("sqlite:") {
+        println!("🗄️ Usando motor SQLite");
+        let pool = SqlitePool::connect(&database_url).await?;
+        let repo = RepositorioSQLite::nuevo(pool);
+        Ok(Arc::new(repo))
+    } else {
+        Err("Protocolo de base de datos no soportado. Use mysql:// o sqlite:".into())
+    }
+}
+
+async fn iniciar_servidor() -> Result<(), Box<dyn Error + Send + Sync>> {
+    let repositorio = obtener_repositorio().await?;
+    
     let jwt_secret = std::env::var("JWT_SECRET")
         .unwrap_or_else(|_| "secreto_por_defecto_desarrollo".to_string());
     let puerto = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string());
-
-    let pool = MySqlPool::connect(&database_url).await?;
-    let repositorio = Arc::new(RepositorioMySQL::nuevo(pool));
-
-    // Verificar si se solicitó resetear la base de datos
-    if args.len() > 1 && args[1] == "--reset-db" {
-        let admin_pass = std::env::var("ADMIN_PASSWORD")
-            .unwrap_or_else(|_| "admin".to_string());
-        repositorio.limpiar_y_sembrar(&admin_pass).await?;
-        println!("👋 Proceso de reset finalizado. Saliendo...");
-        return Ok(());
-    }
 
     // Inicializar Tablas
     repositorio.inicializar_tablas().await?;

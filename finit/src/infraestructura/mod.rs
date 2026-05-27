@@ -1,5 +1,6 @@
 use std::error::Error;
 use sqlx::MySqlPool;
+use bcrypt;
 
 pub mod mysql_repositorio_usuario;
 pub mod mysql_repositorio_colaborador;
@@ -16,8 +17,25 @@ pub mod sqlite_repositorio;
 pub mod social;
 pub mod api;
 
+use crate::dominio::puertos::repositorio_motor::RepositorioMotor;
+
 pub struct RepositorioMySQL {
     pub pool: MySqlPool,
+}
+
+#[async_trait::async_trait]
+impl RepositorioMotor for RepositorioMySQL {
+    async fn inicializar_tablas(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        self.inicializar_tablas().await
+    }
+
+    async fn limpiar_y_sembrar(&self, admin_password: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+        self.limpiar_y_sembrar(admin_password).await
+    }
+
+    async fn ejecutar_query(&self, sql: &str) -> Result<serde_json::Value, Box<dyn Error + Send + Sync>> {
+        self.ejecutar_query(sql).await
+    }
 }
 
 impl RepositorioMySQL {
@@ -192,6 +210,28 @@ impl RepositorioMySQL {
                 .bind(cat_id).bind(nombre).bind(desc).execute(&self.pool).await;
         }
 
+        // 4. Asegurar usuario admin
+        let admin_correo = std::env::var("ADMIN_CORREO").unwrap_or_else(|_| "admin@okupo.com".to_string());
+        let admin_pass = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_string());
+
+        let existe_admin: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM usuario WHERE correo = ?")
+            .bind(&admin_correo)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or((0,));
+
+        if existe_admin.0 == 0 {
+            println!("👤 Creando usuario administrador ({})", admin_correo);
+            let hash = bcrypt::hash(&admin_pass, bcrypt::DEFAULT_COST)?;
+            sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
+                .bind("Administrador")
+                .bind(&admin_correo)
+                .bind(hash)
+                .bind("admin")
+                .execute(&self.pool)
+                .await?;
+        }
+
         println!("✅ Base de datos MySQL inicializada con datos semilla.");
         Ok(())
     }
@@ -220,19 +260,19 @@ impl RepositorioMySQL {
         // Re-inicializar tablas y datos semilla
         self.inicializar_tablas().await?;
 
-        // Crear usuario admin
-        println!("👤 Creando usuario administrador...");
+        // El usuario admin ya se crea en inicializar_tablas usando ADMIN_CORREO y ADMIN_PASSWORD de entorno
+        // Pero limpiar_y_sembrar recibe un admin_password especifico (usado en el CLI)
+        // Si queremos forzar el password que viene por parametro:
+        let admin_correo = std::env::var("ADMIN_CORREO").unwrap_or_else(|_| "admin@okupo.com".to_string());
         let hash = bcrypt::hash(admin_password, bcrypt::DEFAULT_COST)?;
         
-        sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
-            .bind("Administrador")
-            .bind("admin@okupo.com")
+        sqlx::query("UPDATE usuario SET contrasenna = ? WHERE correo = ?")
             .bind(hash)
-            .bind("admin")
+            .bind(&admin_correo)
             .execute(&mut *conn)
             .await?;
 
-        println!("✨ Base de datos reseteada con éxito. Admin: admin@okupo.com");
+        println!("✨ Base de datos reseteada con éxito. Admin: {}", admin_correo);
         Ok(())
     }
 

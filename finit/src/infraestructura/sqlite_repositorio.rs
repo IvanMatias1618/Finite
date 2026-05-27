@@ -1,4 +1,6 @@
 use crate::dominio::puertos::repositorio_categoria::RepositorioCategoria;
+use bcrypt;
+
 use crate::dominio::puertos::repositorio_usuario::RepositorioUsuario;
 use crate::dominio::puertos::repositorio_colaborador::RepositorioColaborador;
 use crate::dominio::puertos::repositorio_servicio::RepositorioServicio;
@@ -22,8 +24,95 @@ use async_trait::async_trait;
 use sqlx::{SqlitePool, Row};
 use rust_decimal::Decimal;
 
+use crate::dominio::puertos::repositorio_motor::RepositorioMotor;
+use crate::dominio::puertos::repositorio_configuracion_precio::RepositorioConfiguracionPrecio;
+use crate::dominio::puertos::repositorio_soporte::RepositorioSoporte;
+use crate::dominio::configuracion_precio::ConfiguracionPrecio;
+
 pub struct RepositorioSQLite {
     pub pool: SqlitePool,
+}
+
+#[async_trait::async_trait]
+impl RepositorioMotor for RepositorioSQLite {
+    async fn inicializar_tablas(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        self.inicializar_tablas().await
+    }
+
+    async fn limpiar_y_sembrar(&self, admin_password: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+        println!("🧹 Limpiando base de datos SQLite...");
+
+        let tablas = vec![
+            "mensaje_solicitud", "resennia", "solicitud_servicio", "precio_servicio_urgencia",
+            "servicio", "subcategoria", "categoria", "configuracion_precio_colaborador",
+            "disponibilidad_colaborador", "reporte_soporte", "portafolio_colaborador",
+            "colaborador", "usuario", "cotizacion_especial"
+        ];
+
+        for tabla in tablas {
+            sqlx::query(&format!("DELETE FROM {}", tabla)).execute(&self.pool).await?;
+        }
+
+        // Re-inicializar tablas y datos semilla
+        self.inicializar_tablas().await?;
+
+        // El usuario admin ya se crea en inicializar_tablas
+        let admin_correo = std::env::var("ADMIN_CORREO").unwrap_or_else(|_| "admin@okupo.com".to_string());
+        let hash = bcrypt::hash(admin_password, bcrypt::DEFAULT_COST)?;
+        
+        sqlx::query("UPDATE usuario SET contrasenna = ? WHERE correo = ?")
+            .bind(hash)
+            .bind(&admin_correo)
+            .execute(&self.pool)
+            .await?;
+
+        println!("✨ Base de datos SQLite reseteada con éxito. Admin: {}", admin_correo);
+        Ok(())
+    }
+
+    async fn ejecutar_query(&self, _sql: &str) -> Result<serde_json::Value, Box<dyn Error + Send + Sync>> {
+        println!("⚠️ ejecutar_query no implementado para SQLite");
+        Ok(serde_json::json!({}))
+    }
+}
+
+#[async_trait]
+impl RepositorioConfiguracionPrecio for RepositorioSQLite {
+    async fn guardar(&self, configuracion: ConfiguracionPrecio) -> Result<ConfiguracionPrecio, Box<dyn Error + Send + Sync>> {
+        let resultado = sqlx::query("INSERT INTO configuracion_precio_colaborador (colaborador_id, precio_por_kilometro, recargo_lluvia, recargo_domingo, recargo_nocturno) VALUES (?, ?, ?, ?, ?)")
+            .bind(configuracion.colaborador_id).bind(configuracion.precio_por_kilometro.to_string())
+            .bind(configuracion.recargo_lluvia.to_string()).bind(configuracion.recargo_domingo.to_string())
+            .bind(configuracion.recargo_nocturno.to_string()).execute(&self.pool).await?;
+        Ok(ConfiguracionPrecio { id: Some(resultado.last_insert_rowid() as i32), ..configuracion })
+    }
+    async fn buscar_por_colaborador(&self, colaborador_id: i32) -> Result<Option<ConfiguracionPrecio>, Box<dyn Error + Send + Sync>> {
+        let row = sqlx::query("SELECT id, colaborador_id, precio_por_kilometro, recargo_lluvia, recargo_domingo, recargo_nocturno FROM configuracion_precio_colaborador WHERE colaborador_id = ?").bind(colaborador_id).fetch_optional(&self.pool).await?;
+        if let Some(r) = row {
+            Ok(Some(ConfiguracionPrecio {
+                id: Some(r.get(0)), colaborador_id: r.get(1),
+                precio_por_kilometro: r.get::<String, _>(2).parse().unwrap_or(Decimal::ZERO),
+                recargo_lluvia: r.get::<String, _>(3).parse().unwrap_or(Decimal::ZERO),
+                recargo_domingo: r.get::<String, _>(4).parse().unwrap_or(Decimal::ZERO),
+                recargo_nocturno: r.get::<String, _>(5).parse().unwrap_or(Decimal::ZERO),
+            }))
+        } else { Ok(None) }
+    }
+    async fn actualizar(&self, configuracion: ConfiguracionPrecio) -> Result<ConfiguracionPrecio, Box<dyn Error + Send + Sync>> {
+        sqlx::query("UPDATE configuracion_precio_colaborador SET precio_por_kilometro = ?, recargo_lluvia = ?, recargo_domingo = ?, recargo_nocturno = ? WHERE id = ?")
+            .bind(configuracion.precio_por_kilometro.to_string()).bind(configuracion.recargo_lluvia.to_string())
+            .bind(configuracion.recargo_domingo.to_string()).bind(configuracion.recargo_nocturno.to_string())
+            .bind(configuracion.id).execute(&self.pool).await?;
+        Ok(configuracion)
+    }
+}
+
+#[async_trait]
+impl RepositorioSoporte for RepositorioSQLite {
+    async fn guardar_reporte(&self, usuario_id: i32, descripcion: String, fotos: Option<String>) -> Result<i32, Box<dyn Error + Send + Sync>> {
+        let resultado = sqlx::query("INSERT INTO reporte_soporte (usuario_id, descripcion, fotos_evidencia) VALUES (?, ?, ?)")
+            .bind(usuario_id).bind(descripcion).bind(fotos).execute(&self.pool).await?;
+        Ok(resultado.last_insert_rowid() as i32)
+    }
 }
 
 impl RepositorioSQLite {
@@ -95,6 +184,28 @@ impl RepositorioSQLite {
 
         // Migracion para resennia: añadir aspectos si no existe
         let _ = sqlx::query("ALTER TABLE resennia ADD COLUMN aspectos TEXT").execute(&self.pool).await;
+
+        // 4. Asegurar usuario admin
+        let admin_correo = std::env::var("ADMIN_CORREO").unwrap_or_else(|_| "admin@okupo.com".to_string());
+        let admin_pass = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_string());
+
+        let existe_admin: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM usuario WHERE correo = ?")
+            .bind(&admin_correo)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or((0,));
+
+        if existe_admin.0 == 0 {
+            println!("👤 Creando usuario administrador ({}) en SQLite", admin_correo);
+            let hash = bcrypt::hash(&admin_pass, bcrypt::DEFAULT_COST)?;
+            sqlx::query("INSERT INTO usuario (nombre, correo, contrasenna, rol) VALUES (?, ?, ?, ?)")
+                .bind("Administrador")
+                .bind(&admin_correo)
+                .bind(hash)
+                .bind("admin")
+                .execute(&self.pool)
+                .await?;
+        }
 
         Ok(())
     }
